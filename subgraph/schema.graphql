@@ -1,0 +1,17 @@
+# Entity for every Approval event emitted by the curated set of major ERC-20 contracts listed
+# in subgraph.yaml. This is Ripcord's second Graph product — composed with the Token API
+# (backend/src/services/graphTokenApi.ts) in riskEngine.ts. Different from GoldRush's approvals
+# snapshot: this is a live, indexed-within-seconds stream, so it can surface a brand-new
+# unlimited approval before GoldRush's own indexer has caught up.
+type ApprovalEvent @entity(immutable: true) {
+  id: ID! # `${txHash}-${logIndex}`
+  owner: Bytes! # the wallet that granted the approval — what riskEngine queries by
+  spender: Bytes! # the contract allowed to move owner's tokens
+  token: Bytes! # which ERC-20 contract this approval is on
+  tokenSymbol: String!
+  amount: BigInt!
+  isUnlimited: Boolean! # true if amount == uint256 max (the actual drain risk signal)
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

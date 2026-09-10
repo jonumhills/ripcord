@@ -1,0 +1,84 @@
+/*
+ * Design tokens lifted from canivibecodeit.com — dark-first terminal/dev-tool aesthetic,
+ * Space Grotesk for display type, JetBrains Mono for body/data, vivid green primary accent,
+ * amber for warning/caution states, red for danger/decline states.
+ * Duplicated in web/app/globals.css — there's no shared build step between the two apps,
+ * keep them in sync by hand if you tweak a value here.
+ */
+
+:root {
+  --bg: #0b0d0b;
+  --fg: #e8e6e0;
+  --surface: #131613;
+  --surface-2: #1a1e1a;
+  --border: #262b26;
+  --muted: #9aa29a;
+
+  --primary: #33e667;
+  --primary-dim: #1d5c33;
+  --on-primary: #06170b;
+
+  --catch: #ffb000;
+  --kinda-bg: #ffb000;
+  --kinda-fg: #241800;
+  --no-bg: #f44;
+  --no-fg: #fff;
+  --lose-bg: #2a1414;
+  --lose-border: #4a2020;
+
+  --font-display: "Space Grotesk Variable", "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-snap: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+
+  --shadow: 0 8px 32px #0006;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f7f8f9;
+    --fg: #15181d;
+    --surface: #fff;
+    --surface-2: #eef0f2;
+    --border: #d8dbe1;
+    --muted: #5b6370;
+
+    --primary: #0b7c39;
+    --primary-dim: #a3d9b9;
+    --on-primary: #fff;
+
+    --catch: #8a6200;
+    --kinda-bg: #f5b300;
+    --kinda-fg: #1a1200;
+    --no-bg: #e03131;
+    --no-fg: #fff;
+    --lose-bg: #fbe4e4;
+    --lose-border: #eab0b0;
+
+    --shadow: 0 8px 32px #10141c1a;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #f7f8f9;
+  --fg: #15181d;
+  --surface: #fff;
+  --surface-2: #eef0f2;
+  --border: #d8dbe1;
+  --muted: #5b6370;
+
+  --primary: #0b7c39;
+  --primary-dim: #a3d9b9;
+  --on-primary: #fff;
+
+  --catch: #8a6200;
+  --kinda-bg: #f5b300;
+  --kinda-fg: #1a1200;
+  --no-bg: #e03131;
+  --no-fg: #fff;
+  --lose-bg: #fbe4e4;
+  --lose-border: #eab0b0;
+
+  --shadow: 0 8px 32px #10141c1a;
+}

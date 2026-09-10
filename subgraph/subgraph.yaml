@@ -1,0 +1,91 @@
+specVersion: 0.0.9
+description: >-
+  Ripcord approvals feed — indexes Approval events from a curated set of major mainnet ERC-20
+  contracts. Second Graph product in the pipeline (composed with the Token API in
+  backend/src/services/graphTokenApi.ts), and a faster-than-GoldRush signal for the same
+  unlimited-approval risk factor riskEngine.ts scores on.
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: USDC
+    network: mainnet
+    source:
+      address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      abi: ERC20
+      # 2026-09-09: mainnet head was ~25,942,304 (cast block-number). Starting a bit before that
+      # keeps initial sync fast for a hackathon demo instead of indexing from token genesis.
+      startBlock: 25900000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - ApprovalEvent
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Approval(indexed address,indexed address,uint256)
+          handler: handleApproval
+      file: ./src/mapping.ts
+  - kind: ethereum
+    name: USDT
+    network: mainnet
+    source:
+      address: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+      abi: ERC20
+      startBlock: 25900000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - ApprovalEvent
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Approval(indexed address,indexed address,uint256)
+          handler: handleApproval
+      file: ./src/mapping.ts
+  - kind: ethereum
+    name: DAI
+    network: mainnet
+    source:
+      address: "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+      abi: ERC20
+      startBlock: 25900000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - ApprovalEvent
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Approval(indexed address,indexed address,uint256)
+          handler: handleApproval
+      file: ./src/mapping.ts
+  - kind: ethereum
+    name: WETH
+    network: mainnet
+    source:
+      address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+      abi: ERC20
+      startBlock: 25900000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - ApprovalEvent
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Approval(indexed address,indexed address,uint256)
+          handler: handleApproval
+      file: ./src/mapping.ts
