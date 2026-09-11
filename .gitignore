@@ -16,3 +16,4 @@ contracts/broadcast/
 extension/dist/
 extension/.wxt/
 coverage/
+*.tsbuildinfo
