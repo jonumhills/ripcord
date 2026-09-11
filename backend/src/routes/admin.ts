@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { config } from "../config.js";
-import { listAllPolicies, getPolicy, updatePolicy, deletePolicy } from "../store/memoryStore.js";
+import { listAllPolicies, getPolicy, updatePolicy, deletePolicy, deleteAllPolicies } from "../store/memoryStore.js";
 import type { Policy } from "../types.js";
 
 /**
@@ -70,6 +70,19 @@ export function registerAdminRoutes(app: FastifyInstance) {
     return {
       status: "deleted",
       note: "Removed from backend tracking only — the on-chain policy (if bound) still exists in PolicyVault and its premium is not refunded. This just stops the monitor from watching it and frees the address(es) for a fresh test bind.",
+    };
+  });
+
+  /** Bulk reset — now that policies survive a restart (see memoryStore.ts), "start fresh" needs
+   * an explicit action instead of happening automatically as a restart side effect. */
+  app.delete("/api/admin/policies", async (req, reply) => {
+    if (!requireAdmin(req, reply)) return;
+
+    const count = deleteAllPolicies();
+    return {
+      status: "deleted",
+      count,
+      note: "Removed from backend tracking only — any on-chain policies still exist in PolicyVault and their premiums are not refunded.",
     };
   });
 }

@@ -49,7 +49,13 @@ export async function handleIncident(incident: Incident): Promise<void> {
     evidenceHash
   );
 
-  updatePolicy(policy.id, { active: false, claimed: true });
+  updatePolicy(policy.id, {
+    active: false,
+    claimed: true,
+    claimedAt: new Date().toISOString(),
+    claimTxHash: receipt.transactionHash,
+    claimTriggerAddress: incident.triggerAddress,
+  });
 
   // Optional stretch — no-ops if Hedera isn't configured.
   const hcsSequence = await logEvidenceToHcs({ ...evidence, payoutTxHash: receipt.transactionHash }).catch(

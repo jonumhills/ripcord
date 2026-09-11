@@ -36,4 +36,7 @@ export interface Policy {
   claimed: boolean;
   onChainPolicyId: string | null;
   bindTxHash: string | null;
+  claimedAt: string | null;
+  claimTxHash: string | null;
+  claimTriggerAddress: string | null;
 }

@@ -55,6 +55,12 @@ export interface Policy {
   claimed: boolean;
   onChainPolicyId: string | null; // set once bindPolicy() confirms on Arc
   bindTxHash: string | null;
+  // Set together by claimsAgent.ts the moment payClaim() confirms — previously `claimed` was a
+  // bare boolean with no record of when, how much, or why, which is exactly what a "claims"
+  // view needs to be more than a status dot. All null until claimed.
+  claimedAt: string | null;
+  claimTxHash: string | null;
+  claimTriggerAddress: Address | null; // the flagged destination that triggered the payout
 }
 
 export interface Incident {

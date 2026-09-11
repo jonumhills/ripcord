@@ -39,6 +39,9 @@ export function registerPolicyRoutes(app: FastifyInstance) {
       claimed: false,
       onChainPolicyId: b.onChainPolicyId,
       bindTxHash: b.bindTxHash,
+      claimedAt: null,
+      claimTxHash: null,
+      claimTriggerAddress: null,
     };
 
     const saved = createPolicy(policy);

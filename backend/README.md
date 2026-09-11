@@ -54,6 +54,7 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 | `GET /api/admin/policies` | **Testing-only.** Lists every policy regardless of status. Requires `X-Admin-Key` header. |
 | `PATCH /api/admin/policy/:id` | **Testing-only.** Directly edit a policy's coverage/status without redoing a real on-chain bind — see the important caveat below. |
 | `DELETE /api/admin/policy/:id` | **Testing-only.** Removes a policy from backend tracking so its address(es) can be rebound fresh. |
+| `DELETE /api/admin/policies` | **Testing-only.** Wipes every policy at once — see "Persistence" below for why this is now the actual way to start fresh instead of a restart. |
 
 ### Admin routes — for testing coverage, not a real feature
 
@@ -71,6 +72,10 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 - **Unlimited/stale approvals** — merged from two sources: GoldRush/Covalent's snapshot (`src/services/goldrush.ts`, broad coverage) and the `subgraph/` package's live feed for major tokens (`src/services/graphSubgraph.ts`, faster but narrower) — see `riskEngine.ts`'s `mergeApprovals`
 - **Prior contact with flagged addresses** — ScamSniffer scam-database, free/no-key (`src/services/scamsniffer.ts`)
 - **Contract verification of approval spenders** — Sourcify, free/no-key, checked on the wallet's home chain via `WALLET_CHAIN_ID` (`src/services/sourcify.ts`)
+
+## Persistence
+
+`src/store/memoryStore.ts` writes through to `.data/policies.json` (gitignored) on every create/update/delete. This isn't a real database — still no migrations, still swap for Postgres before this is a real product — but pure in-memory turned out to be actively annoying during development: nearly every backend code change needs a `npm run dev` restart, and that was silently wiping every policy, which repeatedly caused confusion (a freshly-bound policy disappearing from the dashboard, "delete the policy" requests that turned out to already be empty from an unrelated restart). Now a restart is safe. To actually start fresh, either `rm -rf .data` or call `DELETE /api/admin/policies`.
 
 ## Sign-in with wallet
 

@@ -113,13 +113,33 @@ export default function PolicyDashboardPage({ params }: { params: { id: string }
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary font-display text-base">
               ✓
             </span>
-            <div>
-              <span className="label-caps text-primary">Payout complete</span>
-              <p className="text-fg mt-1.5 leading-relaxed">
-                ${formatUsdc(policy.coverageCap)} USDC sent to{" "}
-                <span className="font-mono text-sm">{policy.payoutAddress}</span> — no claim form,
-                no review, no wait.
-              </p>
+            <div className="flex flex-col gap-2 min-w-0">
+              <div>
+                <span className="label-caps text-primary">Payout complete</span>
+                <p className="text-fg mt-1.5 leading-relaxed">
+                  ${formatUsdc(policy.coverageCap)} USDC sent to{" "}
+                  <span className="font-mono text-sm">{policy.payoutAddress}</span> — no claim form,
+                  no review, no wait.
+                </p>
+              </div>
+              <div className="flex flex-col gap-1.5 text-xs text-muted pt-1">
+                {policy.claimedAt && <span>Paid {new Date(policy.claimedAt).toLocaleString()}</span>}
+                {policy.claimTriggerAddress && (
+                  <span>
+                    Triggered by transfer to <span className="font-mono">{policy.claimTriggerAddress}</span>
+                  </span>
+                )}
+                {policy.claimTxHash && (
+                  <a
+                    href={`https://testnet.arcscan.app/tx/${policy.claimTxHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-primary hover:underline break-all"
+                  >
+                    {policy.claimTxHash} ↗
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         )}
