@@ -17,6 +17,7 @@ All core logic lives here: risk engine, quote engine, Arc chain client, wallet m
 | ScamSniffer | ✅ Free, no key, works as-is |
 | PolicyVault on Arc | ✅ Deployed and wired in — `0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855`, see `contracts/README.md` |
 | Monitor + claims agent | Code correct and wired to the live vault; not yet triggered end-to-end (needs a real or simulated incident — see `/api/demo/simulate-incident`) |
+| Postgres (Supabase) | ✅ **Live-verified** — schema applied, policy create/read/update/delete and the full sign-in flow (real signature, replay rejection) all tested against the real database, not a mock |
 
 ## Real bugs found and fixed by actually testing with live API keys (2026-09-11)
 
@@ -73,15 +74,26 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 - **Prior contact with flagged addresses** — ScamSniffer scam-database, free/no-key (`src/services/scamsniffer.ts`)
 - **Contract verification of approval spenders** — Sourcify, free/no-key, checked on the wallet's home chain via `WALLET_CHAIN_ID` (`src/services/sourcify.ts`)
 
-## Persistence
+## Persistence — Postgres via Supabase
 
-`src/store/memoryStore.ts` writes through to `.data/policies.json` (gitignored) on every create/update/delete. This isn't a real database — still no migrations, still swap for Postgres before this is a real product — but pure in-memory turned out to be actively annoying during development: nearly every backend code change needs a `npm run dev` restart, and that was silently wiping every policy, which repeatedly caused confusion (a freshly-bound policy disappearing from the dashboard, "delete the policy" requests that turned out to already be empty from an unrelated restart). Now a restart is safe. To actually start fresh, either `rm -rf .data` or call `DELETE /api/admin/policies`.
+`src/store/policyStore.ts` and `src/services/authStore.ts` (renamed from `memoryStore.ts` — it stopped being in-memory) are backed by real Postgres, connected via `pg` using Supabase's **session pooler** (port 5432 — the one meant for a persistent long-running server like this one on Railway, as opposed to the transaction pooler on 6543 meant for serverless/edge). This replaced two earlier, weaker approaches in the same session: pure in-memory (wiped on every restart, and nearly every backend code change needs one) and a JSON file (wiped on every Railway *redeploy*, since its filesystem is ephemeral — the exact same problem one layer up).
+
+**Setup:**
+1. Create a Supabase project, grab its connection string from Project Settings → Database → Connection string → **Session pooler**.
+2. Run `supabase/schema.sql` against it once — either paste it into the Supabase SQL editor, or `psql "$DATABASE_URL" -f supabase/schema.sql`.
+3. Set `DATABASE_URL` in `.env` to that connection string (with your real database password, not the `[YOUR-PASSWORD]` placeholder Supabase shows before you fill it in).
+
+Verified live end-to-end: schema applied to a real project, policy create/read/update/delete confirmed via direct SQL and the API, the full sign-in flow (real signature, nonce replay correctly rejected), and — a real bug caught in the process — addresses now stored lowercase, since Postgres's `@>` array-containment operator is case-sensitive and a checksummed (mixed-case) address from the frontend silently wouldn't have matched a lowercase query otherwise.
+
+RLS is enabled on all three tables with no policies defined — the backend only ever connects with the database's own credentials (never an anon/public key), so this is pure defense in depth, not load-bearing for anything working.
+
+To start fresh: `DELETE /api/admin/policies`, or truncate the tables directly in the SQL editor.
 
 ## Sign-in with wallet
 
 Real signature verification, not "trust whatever address the frontend sends" — an address alone in a request body is spoofable. `POST /api/auth/nonce` issues a one-time message; the wallet signs it with `personal_sign` (no gas, no transaction); `POST /api/auth/verify` recovers the signing address from that signature with viem's `recoverMessageAddress` and only issues a session token if it matches the claimed address. Verified live end-to-end (`backend/test-auth.mjs`, run once and deleted — not part of the repo): real signature accepted, malformed signature rejected (400), consumed-nonce replay rejected (400), missing auth header rejected (401).
 
-Sessions are opaque tokens in an in-memory map (`authStore.ts`) — same "no DB for a hackathon" reasoning as `memoryStore.ts`, restart-to-reset. One real limitation worth knowing: this only verifies EOA signatures. A smart-contract wallet (Safe, etc.) would need ERC-1271 verification instead, which `recoverMessageAddress` doesn't do — out of scope here.
+Sessions and nonces live in Postgres (`authStore.ts` — see "Persistence" above), not in-memory, so sign-in survives restarts and works correctly across more than one backend instance. One real limitation worth knowing regardless: this only verifies EOA signatures. A smart-contract wallet (Safe, etc.) would need ERC-1271 verification instead, which `recoverMessageAddress` doesn't do — out of scope here.
 
 ## Deploying to Railway
 

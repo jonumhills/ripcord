@@ -16,7 +16,7 @@ export function registerAuthRoutes(app: FastifyInstance) {
     const { address } = req.body ?? {};
     if (!address) return reply.status(400).send({ error: "address is required" });
 
-    const { message } = issueNonce(address as Address);
+    const { message } = await issueNonce(address as Address);
     return { message };
   });
 
@@ -26,7 +26,7 @@ export function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(400).send({ error: "address and signature are required" });
     }
 
-    const message = consumeNonceMessage(address as Address);
+    const message = await consumeNonceMessage(address as Address);
     if (!message) {
       return reply
         .status(400)
@@ -44,13 +44,13 @@ export function registerAuthRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: "signature does not match the claimed address" });
     }
 
-    const token = createSession(address as Address);
+    const token = await createSession(address as Address);
     return { token, address: (address as string).toLowerCase() };
   });
 
   app.post("/api/auth/signout", async (req, reply) => {
     const auth = req.headers.authorization;
-    if (auth?.startsWith("Bearer ")) destroySession(auth.slice("Bearer ".length));
+    if (auth?.startsWith("Bearer ")) await destroySession(auth.slice("Bearer ".length));
     return { status: "ok" };
   });
 }

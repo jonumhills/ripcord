@@ -62,6 +62,14 @@ export const config = {
     claimsAgentPrivateKey: required("CLAIMS_AGENT_PRIVATE_KEY") as `0x${string}`,
   },
 
+  database: {
+    // A direct Postgres connection string (Supabase's session pooler, port 5432 — recommended
+    // for a persistent long-running server like this one on Railway, vs. the transaction pooler
+    // on 6543 which is meant for serverless/edge). Run backend/supabase/schema.sql once on the
+    // project before first use.
+    url: required("DATABASE_URL"),
+  },
+
   admin: {
     // Gate for DELETE/PATCH on policies — testing-only surface, not a customer-facing feature
     // (a real insurer doesn't let a policyholder edit their own coverage). Deliberately not

@@ -10,7 +10,7 @@ Built for ETHGlobal Online. Everything below has actually been run, not just wri
 |---|---|
 | `contracts/` | ✅ Compiles clean, **7/7 tests passing**, **deployed live on Arc testnet** — see below |
 | `subgraph/` | ✅ `codegen` + `build` verified — compiles to deployable WASM. Not yet deployed to Studio. |
-| `backend/` | ✅ **Full pipeline live-tested end-to-end** — real risk score + real quote against a real wallet, real API keys, wired to the deployed vault. Three real integration bugs found and fixed along the way; see `backend/README.md` |
+| `backend/` | ✅ **Full pipeline live-tested end-to-end** — real risk score + real quote against a real wallet, real API keys, wired to the deployed vault, backed by real Postgres (Supabase). Several real bugs found and fixed along the way; see `backend/README.md` |
 | `web/` | ✅ `npm run build` succeeds clean across all 7 routes (added `/dashboard`, sign-in) — several real bugs found and fixed along the way (SSR crash, missing Suspense boundary, wallet always reusing the old account, missing Arc chain switch), see `web/README.md` |
 | `extension/` | ✅ `npm install`, typecheck, and `npm run build` all verified clean — real icon assets generated (the build genuinely fails without them) |
 | Vercel / Railway | ⏳ Not yet deployed — everything above is verified locally |

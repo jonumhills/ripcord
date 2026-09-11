@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { createPolicy, getPolicy, listAllPolicies } from "../store/memoryStore.js";
+import { createPolicy, getPolicy, listAllPolicies } from "../store/policyStore.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import type { Address, Policy } from "../types.js";
 
@@ -44,12 +44,12 @@ export function registerPolicyRoutes(app: FastifyInstance) {
       claimTriggerAddress: null,
     };
 
-    const saved = createPolicy(policy);
+    const saved = await createPolicy(policy);
     return reply.status(201).send({ policy: saved });
   });
 
   app.get<{ Params: { id: string } }>("/api/policy/:id", async (req, reply) => {
-    const policy = getPolicy(req.params.id);
+    const policy = await getPolicy(req.params.id);
     if (!policy) return reply.status(404).send({ error: "not found" });
     return { policy };
   });
@@ -59,10 +59,11 @@ export function registerPolicyRoutes(app: FastifyInstance) {
    * "policies" path, deliberately distinct from the singular "/api/policy/:id" above so there's
    * no route-matching ambiguity between "mine" and a numeric policy id. */
   app.get("/api/policies/mine", async (req, reply) => {
-    const address = requireAuth(req, reply);
+    const address = await requireAuth(req, reply);
     if (!address) return;
 
-    const mine = listAllPolicies().filter(
+    const all = await listAllPolicies();
+    const mine = all.filter(
       (p) =>
         p.holder.toLowerCase() === address.toLowerCase() ||
         p.coveredAddresses.some((a) => a.toLowerCase() === address.toLowerCase())

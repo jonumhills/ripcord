@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { config } from "../config.js";
-import { listAllPolicies, getPolicy, updatePolicy, deletePolicy, deleteAllPolicies } from "../store/memoryStore.js";
+import { listAllPolicies, getPolicy, updatePolicy, deletePolicy, deleteAllPolicies } from "../store/policyStore.js";
 import type { Policy } from "../types.js";
 
 /**
@@ -41,7 +41,7 @@ type UpdatablePolicyFields = Partial<
 export function registerAdminRoutes(app: FastifyInstance) {
   app.get("/api/admin/policies", async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
-    return { policies: listAllPolicies() };
+    return { policies: await listAllPolicies() };
   });
 
   app.patch<{ Params: { id: string }; Body: UpdatablePolicyFields }>(
@@ -49,10 +49,10 @@ export function registerAdminRoutes(app: FastifyInstance) {
     async (req, reply) => {
       if (!requireAdmin(req, reply)) return;
 
-      const existing = getPolicy(req.params.id);
+      const existing = await getPolicy(req.params.id);
       if (!existing) return reply.status(404).send({ error: "not found" });
 
-      const updated = updatePolicy(req.params.id, req.body ?? {});
+      const updated = await updatePolicy(req.params.id, req.body ?? {});
       return {
         policy: updated,
         note: "coverageCap changes here are backend-only — the on-chain payout amount is fixed at bind time and cannot be edited. See admin.ts's doc comment.",
@@ -63,22 +63,22 @@ export function registerAdminRoutes(app: FastifyInstance) {
   app.delete<{ Params: { id: string } }>("/api/admin/policy/:id", async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
 
-    const existing = getPolicy(req.params.id);
+    const existing = await getPolicy(req.params.id);
     if (!existing) return reply.status(404).send({ error: "not found" });
 
-    deletePolicy(req.params.id);
+    await deletePolicy(req.params.id);
     return {
       status: "deleted",
       note: "Removed from backend tracking only — the on-chain policy (if bound) still exists in PolicyVault and its premium is not refunded. This just stops the monitor from watching it and frees the address(es) for a fresh test bind.",
     };
   });
 
-  /** Bulk reset — now that policies survive a restart (see memoryStore.ts), "start fresh" needs
-   * an explicit action instead of happening automatically as a restart side effect. */
+  /** Bulk reset — policies survive a restart now (see policyStore.ts), so "start fresh" needs an
+   * explicit action instead of happening automatically as a restart side effect. */
   app.delete("/api/admin/policies", async (req, reply) => {
     if (!requireAdmin(req, reply)) return;
 
-    const count = deleteAllPolicies();
+    const count = await deleteAllPolicies();
     return {
       status: "deleted",
       count,

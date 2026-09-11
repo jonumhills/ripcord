@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { getPolicy, updatePolicy } from "../store/memoryStore.js";
+import { getPolicy, updatePolicy } from "../store/policyStore.js";
 import { payClaimOnChain } from "../chain/arcClient.js";
 import { logEvidenceToHcs } from "../hedera/hcsLogger.js";
 import type { Incident } from "../types.js";
@@ -11,7 +11,7 @@ import type { Incident } from "../types.js";
  * also the entire product pitch: detection is the claim.
  */
 export async function handleIncident(incident: Incident): Promise<void> {
-  const policy = getPolicy(incident.policyId);
+  const policy = await getPolicy(incident.policyId);
 
   if (!policy) {
     console.error(`[claimsAgent] no such policy: ${incident.policyId}`);
@@ -49,7 +49,7 @@ export async function handleIncident(incident: Incident): Promise<void> {
     evidenceHash
   );
 
-  updatePolicy(policy.id, {
+  await updatePolicy(policy.id, {
     active: false,
     claimed: true,
     claimedAt: new Date().toISOString(),

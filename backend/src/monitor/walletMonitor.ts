@@ -1,4 +1,4 @@
-import { listActivePolicies } from "../store/memoryStore.js";
+import { listActivePolicies } from "../store/policyStore.js";
 import { getOutgoingTransfersSince } from "../services/graphTokenApi.js";
 import { isFlaggedAddress } from "../services/scamsniffer.js";
 import { handleIncident } from "../agents/claimsAgent.js";
@@ -18,7 +18,7 @@ const POLL_INTERVAL_MS = 5000;
 const lastCheckedMs = new Map<string, number>(); // per-address watermark, avoids re-processing old transfers
 
 async function tick() {
-  const policies = listActivePolicies();
+  const policies = await listActivePolicies();
   if (policies.length === 0) return;
 
   const allCoveredAddresses = new Set<Address>();
