@@ -10,7 +10,17 @@
 | Reentrancy ordering | ✅ Fixed — `bindPolicy` now does all state writes before the external `transferFrom` call |
 | Zero-address guards | ✅ Added on constructor and `setClaimsAgent` |
 | Arc testnet connectivity | ✅ Verified live — see below |
-| Deployed instance | ⏳ Not yet deployed — needs a funded deployer key (see Deploy section) |
+| Deployed instance | ✅ **Live on Arc testnet**, deployed 2026-09-11 — `0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855` |
+
+### Deployed instance
+
+- **Address:** `0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855`
+- **Explorer:** [testnet.arcscan.app/address/0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855](https://testnet.arcscan.app/address/0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855)
+- **Owner (deployer):** `0xcFdab5B40fA50A604ca01eC83693647011919B38` — a demo-only key generated for this hackathon, funded with 20 USDC from the Circle faucet. Not for production use.
+- **Claims agent:** `0x3B22a9df6B5d6df3E1253769Ed5341bbd3B79002` — the only address that can call `payClaim()`. Its private key lives in `backend/.env` as `CLAIMS_AGENT_PRIVATE_KEY`.
+- **Deploy cost:** ~0.05 USDC (gas on Arc is paid in USDC — see "Verified Arc testnet facts" below)
+- Verified post-deploy with `cast call` against `owner()`, `claimsAgent()`, `usdc()` — all match expected values.
+- `backend/.env` and `web/.env.local` already point at this address (both gitignored — not in the repo, set them yourself from `.env.example` + this address if you're pulling the repo fresh).
 
 ## Verified Arc testnet facts (2026-09-09)
 
