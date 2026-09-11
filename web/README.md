@@ -28,6 +28,14 @@ npm run dev   # http://localhost:3000 (or the next free port if that's taken)
 | `/bind` | Reads `?addresses=&coverageCapUsd=` from either `/app` or the extension, connects a wallet, switches it to Arc Testnet if needed, approves USDC, calls `PolicyVault.bindPolicy()` directly from the user's wallet, then registers the policy with the backend for monitoring. Shows a step tracker (Review → Connect → Sign). |
 | `/app/policy/[id]` | Policy dashboard. **This is the page to have open for the hackathon video** — it has the "Simulate incident" panel that fires the real claims-agent payout path on cue. |
 
+## Navigation flow (fixed 2026-09-12)
+
+Checked how real insurance products handle this — Lemonade and Root both make the dashboard a persistent, always-one-tap destination once signed in, with an explicit success confirmation (not a silent redirect) after binding coverage. This app had three concrete gaps against that pattern, all fixed:
+
+1. **Dashboard was buried in the account dropdown** — you had to know to click your address to find "My wallets." Now `Nav` shows a persistent **Dashboard** link whenever signed in, visible on every page, same row as "Get covered."
+2. **`/bind` silently auto-redirected** the instant the last call resolved — no success moment, no choice of where to go. Now it shows an explicit "Policy bound" confirmation with two clear CTAs: **View policy** and **Go to dashboard**.
+3. **`/app/policy/[id]` was a dead end** — no link back anywhere except the (previously hidden) Nav dropdown. Now has a **← Back to dashboard** breadcrumb at the top.
+
 ## Sign-in with wallet
 
 `Nav`'s "Sign in" button (and `/dashboard`'s own prompt) call `lib/auth.ts`'s `signInWithMetaMask()`: connect (forcing the account picker — see the wallet-connect note below), fetch a one-time challenge from the backend, sign it with `personal_sign` (no gas, no transaction), send the signature back for verification, store the resulting session token in `localStorage`. `lib/useAuth.ts` is the shared hook `Nav` and `/dashboard` both read so sign-in/out in one doesn't leave the other stale.

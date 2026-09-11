@@ -42,6 +42,11 @@ export function Nav() {
           </a>
           <NavLink href="/app">Get covered</NavLink>
 
+          {/* Dashboard is a persistent, always-visible destination once signed in — not buried
+              behind the account menu. Same pattern Lemonade/Root use: the policy/claims home
+              base is one tap from anywhere, not a submenu item you have to know to look for. */}
+          {hydrated && session && <NavLink href="/dashboard">Dashboard</NavLink>}
+
           {hydrated && !session && (
             <button className="btn btn-primary !py-2 !px-4 !text-sm" onClick={signIn} disabled={loading}>
               {loading ? "Check your wallet…" : "Sign in"}
@@ -63,13 +68,6 @@ export function Nav() {
                   {/* Click-outside catcher */}
                   <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
                   <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-48 card !p-2 shadow">
-                    <Link
-                      href="/dashboard"
-                      className="block rounded-md px-3 py-2 text-sm hover:bg-surface-2 transition-colors"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      My wallets
-                    </Link>
                     <button
                       className="block w-full text-left rounded-md px-3 py-2 text-sm text-no-bg hover:bg-surface-2 transition-colors"
                       onClick={() => {

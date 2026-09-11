@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { getPolicy, simulateIncident } from "@/lib/api";
 import type { Policy } from "@/lib/types";
@@ -83,6 +84,10 @@ export default function PolicyDashboardPage({ params }: { params: { id: string }
     <>
       <Nav />
       <main className="wrap py-14 max-w-xl flex flex-col gap-6">
+        <Link href="/dashboard" className="text-sm text-muted hover:text-fg transition-colors -mb-2 self-start">
+          ← Back to dashboard
+        </Link>
+
         <div className="flex items-center justify-between">
           <h1 className="font-display font-semibold text-3xl tracking-[-0.02em]">Policy #{policy.id}</h1>
           <span className={`badge ${statusClass}`}>{statusLabel}</span>

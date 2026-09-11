@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { TxChecklist, type TxStep } from "@/components/app/TxChecklist";
 import { getQuote, registerBoundPolicy } from "@/lib/api";
@@ -52,7 +53,6 @@ const INITIAL_TX_STEPS: TxStep[] = [
 ];
 
 function BindPageInner() {
-  const router = useRouter();
   const params = useSearchParams();
   const addresses = (params.get("addresses") ?? "").split(",").filter(Boolean);
   const coverageCapUsd = Number(params.get("coverageCapUsd") ?? 0);
@@ -63,6 +63,7 @@ function BindPageInner() {
   const [payoutAddress, setPayoutAddress] = useState("");
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [boundPolicyId, setBoundPolicyId] = useState<string | null>(null);
   const [txSteps, setTxSteps] = useState<TxStep[]>(INITIAL_TX_STEPS);
 
   function patchStep(id: string, patch: Partial<TxStep>) {
@@ -149,7 +150,11 @@ function BindPageInner() {
         bindTxHash,
       });
 
-      router.push(`/app/policy/${policy.id}`);
+      // Show an explicit success moment with a real choice of where to go next, rather than
+      // silently yanking the page away the instant the last call resolves — the exact "no clean
+      // flow to navigate to the dashboard" gap this was built to close.
+      setSigning(false);
+      setBoundPolicyId(policy.id);
     } catch (err) {
       setSigning(false);
       const message = err instanceof Error ? err.message : String(err);
@@ -206,13 +211,13 @@ function BindPageInner() {
           </div>
         )}
 
-        {!account && (
+        {!account && !boundPolicyId && (
           <button className="btn btn-primary self-start" onClick={handleConnect}>
             Connect wallet
           </button>
         )}
 
-        {account && (
+        {account && !boundPolicyId && (
           <div className="card fade-in-up flex flex-col gap-4">
             <div className="flex items-center gap-2 text-sm">
               <span className="inline-block h-2 w-2 rounded-full bg-primary" />
@@ -246,6 +251,30 @@ function BindPageInner() {
                 <TxChecklist steps={txSteps} />
               </div>
             )}
+          </div>
+        )}
+
+        {boundPolicyId && (
+          <div className="card card-accent fade-in-up flex flex-col gap-5">
+            <div className="flex items-start gap-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary font-display text-base">
+                ✓
+              </span>
+              <div>
+                <span className="label-caps text-primary">Policy bound</span>
+                <p className="text-fg mt-1.5 leading-relaxed">
+                  You're covered. Automatic payout the moment a flagged drain hits an insured address — no claim to file.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Link href={`/app/policy/${boundPolicyId}`} className="btn btn-primary">
+                View policy →
+              </Link>
+              <Link href="/dashboard" className="btn btn-secondary">
+                Go to dashboard
+              </Link>
+            </div>
           </div>
         )}
       </main>
