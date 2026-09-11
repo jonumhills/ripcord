@@ -109,9 +109,60 @@ export function usdcToUnits(usd: number): bigint {
   return BigInt(Math.round(usd * 10 ** USDC_DECIMALS));
 }
 
-/** Approve the vault to pull `premium` USDC, then call bindPolicy(). Returns the bind tx hash
+export function formatUsdcUnits(units: bigint): string {
+  return (Number(units) / 10 ** USDC_DECIMALS).toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+export async function getUsdcBalance(account: `0x${string}`): Promise<bigint> {
+  return getPublicClient().readContract({
+    address: USDC_ADDRESS,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: [account],
+  }) as Promise<bigint>;
+}
+
+/**
+ * Confirmed live: a bind attempt with an underfunded wallet ($0.29 USDC against a $41.90
+ * premium) reverted on-chain — nextPolicyId never incremented — but the only symptom the old
+ * code surfaced was "PolicyBound event not found," which is a downstream effect, not the cause
+ * (a reverted tx emits no logs, so the event-search always comes up empty on ANY revert, telling
+ * you nothing about why). Checking the balance upfront, before spending gas on a doomed
+ * transaction, is far more reliable than trying to decode Arc's native USDC predeploy's revert
+ * reason after the fact — its exact revert behavior isn't guaranteed the way a normal ERC20's is.
+ */
+export async function requireSufficientBalance(account: `0x${string}`, requiredUnits: bigint): Promise<void> {
+  const balance = await getUsdcBalance(account);
+  if (balance < requiredUnits) {
+    const short = formatUsdcUnits(requiredUnits - balance);
+    throw new Error(
+      `Insufficient USDC — this wallet needs $${short} more on Arc Testnet. Get free testnet USDC at faucet.circle.com.`
+    );
+  }
+}
+
+/** Step 1 of binding: approve the vault to pull `premium` USDC. Returns the tx hash once mined
+ * and confirmed successful (checks receipt.status explicitly — waitForTransactionReceipt does
+ * NOT throw on a reverted transaction by default, it just returns status: "reverted"). */
+export async function approveUsdc(account: `0x${string}`, premium: bigint): Promise<`0x${string}`> {
+  const wallet = getWalletClient();
+  const hash = await wallet.writeContract({
+    account,
+    address: USDC_ADDRESS,
+    abi: erc20Abi,
+    functionName: "approve",
+    args: [POLICY_VAULT_ADDRESS, premium],
+  });
+  const receipt = await getPublicClient().waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") {
+    throw new Error(`USDC approval reverted on-chain (tx ${hash}) — check your balance and try again.`);
+  }
+  return hash;
+}
+
+/** Step 2 of binding: call bindPolicy() with an already-approved premium. Returns the tx hash
  * and the on-chain policyId parsed from the PolicyBound event log. */
-export async function bindPolicyOnChain(params: {
+export async function callBindPolicy(params: {
   account: `0x${string}`;
   coveredAddresses: `0x${string}`[];
   payoutAddress: `0x${string}`;
@@ -119,17 +170,7 @@ export async function bindPolicyOnChain(params: {
   premium: bigint;
   durationSeconds: number;
 }): Promise<{ bindTxHash: `0x${string}`; onChainPolicyId: string }> {
-  await ensureArcChain();
   const wallet = getWalletClient();
-
-  const approveHash = await wallet.writeContract({
-    account: params.account,
-    address: USDC_ADDRESS,
-    abi: erc20Abi,
-    functionName: "approve",
-    args: [POLICY_VAULT_ADDRESS, params.premium],
-  });
-  await getPublicClient().waitForTransactionReceipt({ hash: approveHash });
 
   const bindHash = await wallet.writeContract({
     account: params.account,
@@ -146,8 +187,18 @@ export async function bindPolicyOnChain(params: {
   });
   const receipt = await getPublicClient().waitForTransactionReceipt({ hash: bindHash });
 
+  if (receipt.status !== "success") {
+    throw new Error(
+      `Bind transaction reverted on-chain (tx ${bindHash}) — the premium may not have been approved, or the wallet's USDC balance changed. Check the transaction on Arcscan for details.`
+    );
+  }
+
   const log = receipt.logs.find((l) => l.address.toLowerCase() === POLICY_VAULT_ADDRESS.toLowerCase());
-  if (!log) throw new Error("PolicyBound event not found in bind transaction receipt");
+  if (!log) {
+    // Should be unreachable now that status is checked above, but keep a clear message rather
+    // than a silent crash if PolicyVault's ABI/event signature ever changes.
+    throw new Error(`Bind transaction succeeded (tx ${bindHash}) but no PolicyBound event was found — this needs investigation.`);
+  }
 
   // topics[1] is the indexed policyId
   const onChainPolicyId = BigInt(log.topics[1] as `0x${string}`).toString();
