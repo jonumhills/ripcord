@@ -58,9 +58,15 @@ function score(signals: AddressSignals): AddressRiskScore {
   let points = 0;
   const reasons: string[] = [];
 
-  // Wallet age — newer wallets are riskier. Unknown age (no history at all) is treated as new.
+  // Wallet age — newer wallets are riskier. Unknown age (no visible history at all in any of the
+  // tracked tokens) is scored the same as brand-new — same risk treatment, since an unproven
+  // wallet is exactly what the "new wallet" risk bucket is for — but the reason text says so
+  // honestly instead of claiming a specific age it doesn't actually know.
   const age = signals.walletAgeDays ?? 0;
-  if (age < 7) {
+  if (signals.walletAgeDays === null) {
+    points += 25;
+    reasons.push("No visible transfer history found — treated as unproven/new");
+  } else if (age < 7) {
     points += 25;
     reasons.push("Wallet is less than 7 days old");
   } else if (age < 30) {
