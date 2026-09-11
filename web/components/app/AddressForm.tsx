@@ -40,14 +40,14 @@ export function AddressForm({ addresses, onAddAddress, onRemoveAddress }: Props)
   }
 
   return (
-    <div className="card flex flex-col gap-4">
+    <div className="card flex flex-col gap-5">
       <div>
         <h2 className="text-lg font-semibold">Add wallets</h2>
-        <p className="label-caps mt-1">You don't need the keys — insure any address</p>
+        <p className="label-caps mt-1.5">You don't need the keys — insure any address</p>
       </div>
 
-      <div className="flex gap-3">
-        <button className="btn btn-secondary" onClick={handleConnect}>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button className="btn btn-secondary sm:w-auto" onClick={handleConnect}>
           Connect wallet
         </button>
         <div className="flex-1 flex gap-2">
@@ -58,7 +58,7 @@ export function AddressForm({ addresses, onAddAddress, onRemoveAddress }: Props)
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add(input)}
           />
-          <button className="btn btn-primary" onClick={() => add(input)}>
+          <button className="btn btn-primary shrink-0" onClick={() => add(input)}>
             Add
           </button>
         </div>
@@ -66,11 +66,17 @@ export function AddressForm({ addresses, onAddAddress, onRemoveAddress }: Props)
       {error && <p className="text-no-bg text-sm">{error}</p>}
 
       {addresses.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 pt-1">
           {addresses.map((addr) => (
-            <div key={addr} className="flex items-center justify-between bg-surface-2 border border-border rounded py-2 px-3">
+            <div
+              key={addr}
+              className="fade-in-up flex items-center justify-between bg-surface-2 border border-border rounded-md py-2.5 px-3.5"
+            >
               <span className="font-mono text-sm">{addr}</span>
-              <button className="text-no-bg text-xs" onClick={() => onRemoveAddress(addr)}>
+              <button
+                className="text-no-bg text-xs shrink-0 ml-3 hover:opacity-70 transition-opacity"
+                onClick={() => onRemoveAddress(addr)}
+              >
                 Remove
               </button>
             </div>

@@ -69,60 +69,86 @@ export default function PolicyDashboardPage({ params }: { params: { id: string }
     return (
       <>
         <Nav />
-        <main className="wrap py-12">{error ? <p className="text-no-bg">{error}</p> : "Loading…"}</main>
+        <main className="wrap py-14 max-w-xl flex flex-col gap-4">
+          {error ? <p className="text-no-bg">{error}</p> : <div className="card h-40 animate-pulse bg-surface-2" />}
+        </main>
       </>
     );
   }
 
+  const statusLabel = policy.claimed ? "Claim paid" : policy.active ? "Active" : "Expired";
+  const statusClass = policy.claimed || policy.active ? "badge-low" : "badge-declined";
+
   return (
     <>
       <Nav />
-      <main className="wrap py-12 max-w-xl flex flex-col gap-6">
+      <main className="wrap py-14 max-w-xl flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="font-display font-semibold text-2xl">Policy #{policy.id}</h1>
-          <span className={`badge ${policy.claimed ? "badge-declined" : "badge-low"}`}>
-            {policy.claimed ? "Claim paid" : policy.active ? "Active" : "Expired"}
-          </span>
+          <h1 className="font-display font-semibold text-3xl tracking-[-0.02em]">Policy #{policy.id}</h1>
+          <span className={`badge ${statusClass}`}>{statusLabel}</span>
         </div>
 
-        <div className="card flex flex-col gap-3">
-          <Row label="Covered addresses" value={policy.coveredAddresses.join(", ")} mono />
-          <Row label="Payout address" value={policy.payoutAddress} mono />
-          <Row label="Coverage cap" value={`$${formatUsdc(policy.coverageCap)} USDC`} />
-          <Row label="Premium paid" value={`$${formatUsdc(policy.premiumPaid)} USDC`} />
-          <Row label="Expires" value={new Date(policy.expiry).toLocaleDateString()} />
-          <Row label="Bind tx" value={policy.bindTxHash ?? "—"} mono />
+        <div className="card flex flex-col gap-5">
+          <div className="rounded-md bg-surface-2 border border-border px-5 py-4 grid grid-cols-2 gap-4">
+            <div>
+              <span className="label-caps">Coverage cap</span>
+              <p className="font-display text-2xl text-primary mt-1">${formatUsdc(policy.coverageCap)}</p>
+            </div>
+            <div>
+              <span className="label-caps">Premium paid</span>
+              <p className="font-display text-2xl mt-1">${formatUsdc(policy.premiumPaid)}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Row label="Covered addresses" value={policy.coveredAddresses.join(", ")} mono />
+            <Row label="Payout address" value={policy.payoutAddress} mono />
+            <Row label="Expires" value={new Date(policy.expiry).toLocaleDateString()} />
+            <Row label="Bind tx" value={policy.bindTxHash ?? "—"} mono />
+          </div>
         </div>
 
         {policy.claimed && (
-          <div className="card border-primary">
-            <span className="label-caps text-primary">Payout complete</span>
-            <p className="text-fg mt-2">
-              ${formatUsdc(policy.coverageCap)} USDC sent to {policy.payoutAddress} — no claim form, no review.
-            </p>
+          <div className="card card-accent fade-in-up flex items-start gap-4">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary font-display text-base">
+              ✓
+            </span>
+            <div>
+              <span className="label-caps text-primary">Payout complete</span>
+              <p className="text-fg mt-1.5 leading-relaxed">
+                ${formatUsdc(policy.coverageCap)} USDC sent to{" "}
+                <span className="font-mono text-sm">{policy.payoutAddress}</span> — no claim form,
+                no review, no wait.
+              </p>
+            </div>
           </div>
         )}
 
         {!policy.claimed && (
-          <div className="card flex flex-col gap-3">
-            <span className="label-caps">Simulate incident (demo)</span>
-            <p className="text-xs text-muted">
-              Fires the same claims-agent path the live monitor uses. Use a pre-seeded flagged
-              address here for the video — see backend README for how the registry is seeded.
-            </p>
-            <input
-              className="input"
-              placeholder="Flagged destination address (0x…)"
-              value={triggerAddress}
-              onChange={(e) => setTriggerAddress(e.target.value)}
-            />
-            <input
-              className="input"
-              placeholder="Drain tx hash (optional — leave blank for a demo hash)"
-              value={txHash}
-              onChange={(e) => setTxHash(e.target.value)}
-            />
+          <div className="card flex flex-col gap-4">
+            <div>
+              <span className="label-caps">Simulate incident (demo)</span>
+              <p className="text-xs text-muted mt-1.5 leading-relaxed">
+                Fires the same claims-agent path the live monitor uses. Use a pre-seeded flagged
+                address here for the video — see backend README for how the registry is seeded.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <input
+                className="input"
+                placeholder="Flagged destination address (0x…)"
+                value={triggerAddress}
+                onChange={(e) => setTriggerAddress(e.target.value)}
+              />
+              <input
+                className="input"
+                placeholder="Drain tx hash (optional — leave blank for a demo hash)"
+                value={txHash}
+                onChange={(e) => setTxHash(e.target.value)}
+              />
+            </div>
             <button className="btn btn-primary self-start" disabled={!triggerAddress || firing} onClick={handleSimulate}>
+              {firing && <span className="inline-block h-2 w-2 rounded-full bg-on-primary animate-pulse" />}
               {firing ? "Watching for payout…" : "Trigger drain event →"}
             </button>
           </div>
@@ -138,7 +164,7 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
   return (
     <div className="flex items-start justify-between gap-4">
       <span className="label-caps shrink-0">{label}</span>
-      <span className={`text-sm text-right ${mono ? "font-mono" : ""}`}>{value}</span>
+      <span className={`text-sm text-right break-all ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }

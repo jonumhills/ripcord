@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { createPolicy, getPolicy } from "../store/memoryStore.js";
+import { createPolicy, getPolicy, listAllPolicies } from "../store/memoryStore.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 import type { Address, Policy } from "../types.js";
 
 interface RegisterBindBody {
@@ -48,5 +49,22 @@ export function registerPolicyRoutes(app: FastifyInstance) {
     const policy = getPolicy(req.params.id);
     if (!policy) return reply.status(404).send({ error: "not found" });
     return { policy };
+  });
+
+  /** "My insured wallets" — every policy where the signed-in address is either the holder (who
+   * paid) or one of the covered addresses (e.g. someone insured a wallet on your behalf). Plural
+   * "policies" path, deliberately distinct from the singular "/api/policy/:id" above so there's
+   * no route-matching ambiguity between "mine" and a numeric policy id. */
+  app.get("/api/policies/mine", async (req, reply) => {
+    const address = requireAuth(req, reply);
+    if (!address) return;
+
+    const mine = listAllPolicies().filter(
+      (p) =>
+        p.holder.toLowerCase() === address.toLowerCase() ||
+        p.coveredAddresses.some((a) => a.toLowerCase() === address.toLowerCase())
+    );
+
+    return { policies: mine };
   });
 }

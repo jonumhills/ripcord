@@ -41,9 +41,12 @@ export default function ConnectPage() {
       )}
 
       {address && (
-        <div className="card mt-6">
-          <span className="label-caps">Connected</span>
-          <p className="font-mono text-sm mt-2 text-primary">{address}</p>
+        <div className="card card-accent fade-in-up mt-6 flex items-center gap-3">
+          <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+          <div>
+            <span className="label-caps text-primary">Connected</span>
+            <p className="font-mono text-sm mt-1">{address}</p>
+          </div>
         </div>
       )}
 

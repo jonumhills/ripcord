@@ -171,6 +171,15 @@ h3 {
   padding: 24px;
 }
 
+/* A dedicated class, not `.card` + a Tailwind border-color utility — those have equal CSS
+   specificity (0,1,0 each), and .card's own `border:` shorthand is written later in this file
+   than Tailwind's generated utilities layer, so it would always win the cascade and the utility
+   would silently do nothing. Caught this exact bug on the policy dashboard's "claim paid" card. */
+.card-accent {
+  border-color: var(--primary);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 8%, var(--surface)), var(--surface));
+}
+
 .input {
   width: 100%;
   background: var(--surface-2);
@@ -212,4 +221,95 @@ h3 {
 .badge-declined {
   background: var(--no-bg);
   color: var(--no-fg);
+}
+
+/* Focus states — keyboard nav gets a visible, on-brand outline instead of the browser default
+   (or nothing, since .input/.btn already null out the default outline on focus/click). */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Step progress — used by the /app and /bind flows so a multi-step process always shows where
+   you are, not just what's on screen right now. */
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.step-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.step-active .step-dot {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.step-active {
+  color: var(--fg);
+}
+
+.step-done .step-dot {
+  background: var(--primary-dim);
+  border-color: var(--primary-dim);
+  color: var(--primary);
+}
+
+.step-line {
+  width: 24px;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Risk meter — a 0-100 bar, colored by tier, used wherever a risk score is shown so it reads at
+   a glance instead of requiring the number to be parsed. */
+.risk-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.risk-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s var(--ease-out);
+}
+
+/* Section entrance — a small, cheap fade+rise so newly-revealed sections (risk results, a quote
+   panel appearing after "Check risk") don't just snap into existence. */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fade-in-up 0.35s var(--ease-out) both;
 }

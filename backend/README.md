@@ -47,6 +47,10 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 | `POST /api/policy/bind` | Registers a policy *after* the user's wallet has already called `PolicyVault.bindPolicy()` directly on-chain — the backend never touches premium funds. Body needs the resulting `onChainPolicyId` + `bindTxHash`. |
 | `GET /api/policy/:id` | Policy status. |
 | `POST /api/demo/simulate-incident` | **For the hackathon video.** Fires the exact same claims-agent code path the live monitor uses, on cue, so a payout can be triggered deterministically while recording instead of waiting on real polling latency. |
+| `POST /api/auth/nonce` | `{ address }` → a one-time message to sign. No gas, no transaction. |
+| `POST /api/auth/verify` | `{ address, signature }` → recovers the signer with viem's `recoverMessageAddress` (pure/offline, no RPC) and issues a session token if it matches. |
+| `POST /api/auth/signout` | Invalidates the session token in `Authorization: Bearer`. |
+| `GET /api/policies/mine` | **Requires sign-in.** Every policy where the caller is the holder or a covered address — powers the web app's `/dashboard`. |
 | `GET /api/admin/policies` | **Testing-only.** Lists every policy regardless of status. Requires `X-Admin-Key` header. |
 | `PATCH /api/admin/policy/:id` | **Testing-only.** Directly edit a policy's coverage/status without redoing a real on-chain bind — see the important caveat below. |
 | `DELETE /api/admin/policy/:id` | **Testing-only.** Removes a policy from backend tracking so its address(es) can be rebound fresh. |
@@ -67,6 +71,12 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 - **Unlimited/stale approvals** — merged from two sources: GoldRush/Covalent's snapshot (`src/services/goldrush.ts`, broad coverage) and the `subgraph/` package's live feed for major tokens (`src/services/graphSubgraph.ts`, faster but narrower) — see `riskEngine.ts`'s `mergeApprovals`
 - **Prior contact with flagged addresses** — ScamSniffer scam-database, free/no-key (`src/services/scamsniffer.ts`)
 - **Contract verification of approval spenders** — Sourcify, free/no-key, checked on the wallet's home chain via `WALLET_CHAIN_ID` (`src/services/sourcify.ts`)
+
+## Sign-in with wallet
+
+Real signature verification, not "trust whatever address the frontend sends" — an address alone in a request body is spoofable. `POST /api/auth/nonce` issues a one-time message; the wallet signs it with `personal_sign` (no gas, no transaction); `POST /api/auth/verify` recovers the signing address from that signature with viem's `recoverMessageAddress` and only issues a session token if it matches the claimed address. Verified live end-to-end (`backend/test-auth.mjs`, run once and deleted — not part of the repo): real signature accepted, malformed signature rejected (400), consumed-nonce replay rejected (400), missing auth header rejected (401).
+
+Sessions are opaque tokens in an in-memory map (`authStore.ts`) — same "no DB for a hackathon" reasoning as `memoryStore.ts`, restart-to-reset. One real limitation worth knowing: this only verifies EOA signatures. A smart-contract wallet (Safe, etc.) would need ERC-1271 verification instead, which `recoverMessageAddress` doesn't do — out of scope here.
 
 ## Deploying to Railway
 

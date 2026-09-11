@@ -1,8 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { getQuote, registerBoundPolicy } from "@/lib/api";
@@ -10,8 +8,29 @@ import { connectWallet, ensureArcChain, bindPolicyOnChain } from "@/lib/chain";
 import type { Quote } from "@/lib/types";
 
 const COVERAGE_DURATION_SECONDS = 365 * 24 * 60 * 60; // 1 year
+const STEPS = ["Review", "Connect", "Sign"] as const;
 
-export default function BindPage() {
+function shortAddress(a: string) {
+  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+}
+
+function StepTracker({ current }: { current: number }) {
+  return (
+    <div className="steps">
+      {STEPS.map((label, i) => (
+        <div key={label} className="flex items-center">
+          <div className={`step ${i < current ? "step-done" : i === current ? "step-active" : ""}`}>
+            <span className="step-dot">{i + 1}</span>
+            <span>{label}</span>
+          </div>
+          {i < STEPS.length - 1 && <span className="step-line mx-2" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BindPageInner() {
   const router = useRouter();
   const params = useSearchParams();
   const addresses = (params.get("addresses") ?? "").split(",").filter(Boolean);
@@ -80,35 +99,42 @@ export default function BindPage() {
     }
   }
 
+  const signing = step === "approving" || step === "binding" || step === "registering";
+  const currentStep = signing || step === "done" ? 2 : account ? 1 : 0;
+
   return (
     <>
       <Nav />
-      <main className="wrap py-12 max-w-xl flex flex-col gap-6">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">Bind your policy</h1>
-          <p className="text-muted mt-2">
-            This is the only step that touches your wallet — one approval, one signature, both on Arc.
-          </p>
+      <main className="wrap py-14 max-w-xl flex flex-col gap-8">
+        <div className="flex flex-col gap-5">
+          <div>
+            <h1 className="font-display font-semibold text-3xl tracking-[-0.02em]">Bind your policy</h1>
+            <p className="text-muted mt-2 leading-relaxed">
+              This is the only step that touches your wallet — one approval, one signature, both on Arc.
+            </p>
+          </div>
+          <StepTracker current={currentStep} />
         </div>
 
-        {!quote && !error && <p className="text-muted text-sm">Loading quote…</p>}
+        {!quote && !error && <div className="card h-32 animate-pulse bg-surface-2" />}
         {error && <p className="text-no-bg text-sm">{error}</p>}
 
         {quote && (
-          <div className="card flex flex-col gap-3">
+          <div className="card fade-in-up flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <span className="label-caps">Addresses covered</span>
-              <span>{addresses.length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="label-caps">Total premium</span>
-              <span className="font-display text-lg text-primary">
-                ${(Number(quote.totalPremium) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC
-              </span>
+              <span className="font-mono text-sm">{addresses.length}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="label-caps">Coverage period</span>
-              <span>1 year</span>
+              <span className="text-sm">1 year</span>
+            </div>
+
+            <div className="rounded-md bg-surface-2 border border-border px-5 py-4 flex items-center justify-between mt-1">
+              <span className="label-caps">Total premium</span>
+              <span className="font-display text-2xl text-primary">
+                ${(Number(quote.totalPremium) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC
+              </span>
             </div>
           </div>
         )}
@@ -120,27 +146,31 @@ export default function BindPage() {
         )}
 
         {account && (
-          <div className="flex flex-col gap-3">
-            <label className="label-caps" htmlFor="payout">
-              Payout address
-            </label>
-            <input
-              id="payout"
-              className="input"
-              value={payoutAddress}
-              onChange={(e) => setPayoutAddress(e.target.value)}
-            />
-            <p className="text-xs text-muted">
-              Defaults to your connected wallet. Consider a separate address you control — if the
-              insured wallet's key is ever compromised long-term, you don't want the payout going
-              back into an attacker's reach.
-            </p>
+          <div className="card fade-in-up flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+              <span className="text-muted">Connected</span>
+              <span className="font-mono">{shortAddress(account)}</span>
+            </div>
 
-            <button
-              className="btn btn-primary self-start mt-2"
-              disabled={!quote || step === "approving" || step === "binding" || step === "registering"}
-              onClick={handleBind}
-            >
+            <div className="flex flex-col gap-2">
+              <label className="label-caps" htmlFor="payout">
+                Payout address
+              </label>
+              <input
+                id="payout"
+                className="input"
+                value={payoutAddress}
+                onChange={(e) => setPayoutAddress(e.target.value)}
+              />
+              <p className="text-xs text-muted leading-relaxed">
+                Defaults to your connected wallet. Consider a separate address you control — if the
+                insured wallet's key is ever compromised long-term, you don't want the payout going
+                back into an attacker's reach.
+              </p>
+            </div>
+
+            <button className="btn btn-primary self-start" disabled={!quote || signing} onClick={handleBind}>
               {step === "approving" && "Approving USDC…"}
               {step === "binding" && "Binding policy…"}
               {step === "registering" && "Finishing up…"}
@@ -150,5 +180,16 @@ export default function BindPage() {
         )}
       </main>
     </>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary even on a fully client-rendered page — Next
+// bails the whole build otherwise ("should be wrapped in a suspense boundary"), confirmed by
+// `next build` actually failing on this page before this wrapper was added.
+export default function BindPage() {
+  return (
+    <Suspense fallback={<div className="wrap py-14 max-w-xl"><div className="card h-40 animate-pulse bg-surface-2" /></div>}>
+      <BindPageInner />
+    </Suspense>
   );
 }

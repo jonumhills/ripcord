@@ -9,6 +9,24 @@ import { QuotePanel } from "@/components/app/QuotePanel";
 import { assessAddresses, getQuote } from "@/lib/api";
 import type { AddressRiskScore, Quote } from "@/lib/types";
 
+const STEPS = ["Add", "Risk", "Quote"] as const;
+
+function StepTracker({ current }: { current: number }) {
+  return (
+    <div className="steps">
+      {STEPS.map((label, i) => (
+        <div key={label} className="flex items-center">
+          <div className={`step ${i < current ? "step-done" : i === current ? "step-active" : ""}`}>
+            <span className="step-dot">{i + 1}</span>
+            <span className="hidden sm:inline">{label}</span>
+          </div>
+          {i < STEPS.length - 1 && <span className="step-line mx-2" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AppPage() {
   const router = useRouter();
   const [addresses, setAddresses] = useState<string[]>([]);
@@ -51,14 +69,18 @@ export default function AppPage() {
   }
 
   const anyInsurable = scores?.some((s) => s.tier !== "declined") ?? false;
+  const currentStep = quote ? 2 : scores ? 1 : 0;
 
   return (
     <>
       <Nav />
-      <main className="wrap py-12 max-w-2xl flex flex-col gap-6">
-        <div>
-          <h1 className="font-display font-semibold text-2xl">Get covered</h1>
-          <p className="text-muted mt-2">Add, assess, quote, bind — in one flow.</p>
+      <main className="wrap py-14 max-w-2xl flex flex-col gap-8">
+        <div className="flex flex-col gap-5">
+          <div>
+            <h1 className="font-display font-semibold text-3xl tracking-[-0.02em]">Get covered</h1>
+            <p className="text-muted mt-2">Add, assess, quote, bind — in one flow, under a minute.</p>
+          </div>
+          <StepTracker current={currentStep} />
         </div>
 
         <AddressForm
@@ -76,12 +98,18 @@ export default function AppPage() {
         />
 
         {addresses.length > 0 && !scores && (
-          <button className="btn btn-primary self-start" onClick={handleCheckRisk} disabled={loading}>
+          <button className="btn btn-primary self-start -mt-3" onClick={handleCheckRisk} disabled={loading}>
             {loading ? "Scoring…" : "Check risk →"}
           </button>
         )}
 
         {error && <p className="text-no-bg text-sm">{error}</p>}
+
+        {loading && (
+          <div className="flex flex-col gap-3">
+            <div className="card h-24 animate-pulse bg-surface-2" />
+          </div>
+        )}
 
         {scores && (
           <div className="flex flex-col gap-4">
@@ -103,6 +131,11 @@ export default function AppPage() {
             >
               Get covered →
             </button>
+            {!anyInsurable && (
+              <p className="text-xs text-muted -mt-2">
+                Every address here was declined — prior contact with a known-flagged address means it isn't insurable at any price.
+              </p>
+            )}
           </div>
         )}
       </main>
