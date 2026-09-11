@@ -3,7 +3,7 @@ export type Address = `0x${string}`;
 /** Raw signal readings for a single address, before scoring. */
 export interface AddressSignals {
   address: Address;
-  walletAgeDays: number | null; // lower-bound approximation — see graphTokenApi.ts's getWalletAgeDays
+  walletAgeDays: number | null; // lower-bound approximation — see graphTokenApi.ts's getWalletActivitySummary
   totalTransfers: number; // capped at 20 (10 per direction) by the Token API plan's limit — see graphTokenApi.ts
   approvals: ApprovalSignal[];
   contactedFlaggedAddresses: Address[];

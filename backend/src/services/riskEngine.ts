@@ -6,6 +6,15 @@ import * as sourcify from "./sourcify.js";
 import { config } from "../config.js";
 import type { Address, AddressRiskScore, AddressSignals, ApprovalSignal } from "../types.js";
 
+// Cached per address for ASSESSMENT_CACHE_TTL_MS: the UI calls /api/risk/assess and then
+// immediately /api/quote for the same addresses, and the quote screen's coverage slider refires
+// /api/quote on every drag tick even though none of that changes a wallet's actual risk signals —
+// only the coverage cap. Without this, that flow alone was enough to blow through the Token API's
+// 200 req/min plan cap (confirmed live) on a single slider drag. Coverage-cap changes only need
+// quoteEngine's cheap local math re-run, not a full re-assessment.
+const ASSESSMENT_CACHE_TTL_MS = 30_000;
+const assessmentCache = new Map<string, { result: AddressRiskScore; expiresAt: number }>();
+
 /**
  * Pulls all live signals for one address and turns them into a score. Load-bearing on two
  * separate Graph products: the Token API (wallet age + counterparties) and the subgraph/
@@ -13,13 +22,22 @@ import type { Address, AddressRiskScore, AddressSignals, ApprovalSignal } from "
  * degrades or breaks, which is the bar the AI-tooling and Composable tracks both ask for.
  */
 export async function assessAddress(address: Address): Promise<AddressRiskScore> {
-  const [walletAgeDays, totalTransfers, goldrushApprovals, subgraphApprovals, counterparties] = await Promise.all([
-    graphTokenApi.getWalletAgeDays(address),
-    graphTokenApi.getRecentActivityCount(address),
+  const key = address.toLowerCase();
+  const cached = assessmentCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.result;
+
+  const result = await assessAddressUncached(address);
+  assessmentCache.set(key, { result, expiresAt: Date.now() + ASSESSMENT_CACHE_TTL_MS });
+  return result;
+}
+
+async function assessAddressUncached(address: Address): Promise<AddressRiskScore> {
+  const [activity, goldrushApprovals, subgraphApprovals] = await Promise.all([
+    graphTokenApi.getWalletActivitySummary(address),
     goldrush.getApprovals(address),
     graphSubgraph.getApprovalsFromSubgraph(address),
-    graphTokenApi.getTransferCounterparties(address),
   ]);
+  const { walletAgeDays, totalTransfers, counterparties } = activity;
 
   const approvals = mergeApprovals(goldrushApprovals, subgraphApprovals);
 
