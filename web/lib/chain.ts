@@ -28,8 +28,62 @@ export function hasInjectedWallet(): boolean {
 
 export async function connectWallet(): Promise<`0x${string}`> {
   if (!hasInjectedWallet()) throw new Error("No injected wallet found — install MetaMask");
+
+  // eth_requestAccounts alone does NOT show a picker if the site is already authorized — it
+  // silently returns whatever account was connected last time, permanently, with no way to
+  // choose a different one short of disconnecting the site in MetaMask's own settings. Confirmed
+  // live: "every time I click connect wallet, it's picking the previous wallet address only."
+  // wallet_requestPermissions for eth_accounts forces MetaMask's connection UI open again, where
+  // the user can actually switch which account(s) are shared, before eth_requestAccounts resolves.
+  try {
+    await window.ethereum.request({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }],
+    });
+  } catch {
+    // Some wallets (or a user dismissing the permissions prompt) don't support this — fall
+    // through to eth_requestAccounts below rather than blocking connect entirely on it.
+  }
+
   const [address] = (await window.ethereum.request({ method: "eth_requestAccounts" })) as `0x${string}`[];
   return address;
+}
+
+const ARC_CHAIN_ID_HEX = `0x${CHAIN_ID.toString(16)}`;
+
+/** Switches the injected wallet to Arc Testnet, adding it first if the wallet doesn't know about
+ * it yet. Without this, writeContract calls fail with a chain-mismatch error the moment a user's
+ * wallet is on any other network — confirmed live (wallet was on Optimism, id 10, needed 5042002). */
+export async function ensureArcChain(): Promise<void> {
+  if (!hasInjectedWallet()) throw new Error("No injected wallet found");
+
+  const currentChainIdHex = (await window.ethereum.request({ method: "eth_chainId" })) as string;
+  if (currentChainIdHex.toLowerCase() === ARC_CHAIN_ID_HEX.toLowerCase()) return;
+
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: ARC_CHAIN_ID_HEX }],
+    });
+  } catch (err: any) {
+    // 4902 = chain not added to the wallet yet — add it, then the switch above will work next try.
+    if (err?.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: ARC_CHAIN_ID_HEX,
+            chainName: "Arc Testnet",
+            nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+            rpcUrls: [RPC_URL],
+            blockExplorerUrls: ["https://testnet.arcscan.app"],
+          },
+        ],
+      });
+    } else {
+      throw err;
+    }
+  }
 }
 
 function getWalletClient() {
@@ -65,6 +119,7 @@ export async function bindPolicyOnChain(params: {
   premium: bigint;
   durationSeconds: number;
 }): Promise<{ bindTxHash: `0x${string}`; onChainPolicyId: string }> {
+  await ensureArcChain();
   const wallet = getWalletClient();
 
   const approveHash = await wallet.writeContract({

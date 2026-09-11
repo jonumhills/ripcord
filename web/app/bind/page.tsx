@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { getQuote, registerBoundPolicy } from "@/lib/api";
-import { connectWallet, bindPolicyOnChain } from "@/lib/chain";
+import { connectWallet, ensureArcChain, bindPolicyOnChain } from "@/lib/chain";
 import type { Quote } from "@/lib/types";
 
 const COVERAGE_DURATION_SECONDS = 365 * 24 * 60 * 60; // 1 year
@@ -35,6 +35,10 @@ export default function BindPage() {
       const addr = await connectWallet();
       setAccount(addr);
       if (!payoutAddress) setPayoutAddress(addr);
+      // Switch (and if needed, add) Arc Testnet right after connecting, not only right before
+      // signing — so the wallet's network is visibly correct while the user is still reviewing
+      // the quote, instead of a chain-switch prompt appearing out of nowhere at the sign step.
+      await ensureArcChain();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
