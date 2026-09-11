@@ -32,7 +32,7 @@ export default function AppPage() {
   const [addresses, setAddresses] = useState<string[]>([]);
   const [scores, setScores] = useState<AddressRiskScore[] | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [coverageCapUsd, setCoverageCapUsd] = useState(1000);
+  const [coverageCapUsd, setCoverageCapUsd] = useState(10); // slider min — cheapest possible premium for testing; drag up for a realistic quote
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

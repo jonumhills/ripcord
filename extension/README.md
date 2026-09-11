@@ -2,6 +2,10 @@
 
 Manifest V3, Vite + React + CRXJS. Deliberately three screens only — onboarding (add/connect wallets), risk assessment, and quote. Binding and payout live on the website, not here.
 
+## Status
+
+`npm install` + `npx tsc --noEmit` + `npm run build` all verified clean (2026-09-11) — this package went untouched for a while after the initial scaffold, so this was its first real build check of the session, not just written and assumed to work.
+
 ## Setup
 
 ```bash
@@ -18,7 +22,7 @@ A popup page (`chrome-extension://...`) never gets `window.ethereum` injected �
 
 ## Icons
 
-`manifest.config.ts` references `icons/icon-16.png`, `icon-48.png`, `icon-128.png` under `public/icons/` — add real PNGs there before loading the extension (a placeholder square in the primary green `#33e667` is enough for a demo).
+Generated placeholders already in `public/icons/` (`icon-16.png`, `icon-48.png`, `icon-128.png`) — a rounded square in the primary green `#33e667` with a simple ripcord-pull mark, matching the design system. The build genuinely fails without these (`ENOENT: Could not load manifest asset "icons/icon-16.png"`, confirmed live) — not just a cosmetic gap. Swap for real artwork before publishing to the Chrome Web Store; fine as-is for the hackathon demo.
 
 ## Before the demo
 

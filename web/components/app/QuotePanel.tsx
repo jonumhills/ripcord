@@ -23,9 +23,9 @@ export function QuotePanel({ quote, coverageCapUsd, onCoverageCapChange }: Props
         </div>
         <input
           type="range"
-          min={100}
+          min={10}
           max={10000}
-          step={100}
+          step={10}
           value={coverageCapUsd}
           onChange={(e) => onCoverageCapChange(Number(e.target.value))}
           className="w-full accent-primary mt-3"

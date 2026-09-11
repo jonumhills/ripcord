@@ -16,7 +16,7 @@ function formatUsdc(raw: string): string {
 }
 
 export function Quote({ addresses, onBack }: Props) {
-  const [coverageCapUsd, setCoverageCapUsd] = useState(1000);
+  const [coverageCapUsd, setCoverageCapUsd] = useState(10); // slider min — cheapest possible premium for testing; drag up for a realistic quote
   const [quote, setQuote] = useState<QuoteType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +58,9 @@ export function Quote({ addresses, onBack }: Props) {
         </div>
         <input
           type="range"
-          min={100}
+          min={10}
           max={10000}
-          step={100}
+          step={10}
           value={coverageCapUsd}
           onChange={(e) => setCoverageCapUsd(Number(e.target.value))}
           className="w-full accent-primary"
