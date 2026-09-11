@@ -62,6 +62,14 @@ export const config = {
     claimsAgentPrivateKey: required("CLAIMS_AGENT_PRIVATE_KEY") as `0x${string}`,
   },
 
+  admin: {
+    // Gate for DELETE/PATCH on policies — testing-only surface, not a customer-facing feature
+    // (a real insurer doesn't let a policyholder edit their own coverage). Deliberately not
+    // `required()`: an unset key should mean the admin routes refuse everything, not fall back
+    // to some hardcoded default that would ship as a real vulnerability if this got deployed.
+    apiKey: optional("ADMIN_API_KEY"),
+  },
+
   hedera: {
     operatorId: optional("HEDERA_OPERATOR_ID"),
     operatorKey: optional("HEDERA_OPERATOR_KEY"),

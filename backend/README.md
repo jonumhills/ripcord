@@ -47,6 +47,15 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 | `POST /api/policy/bind` | Registers a policy *after* the user's wallet has already called `PolicyVault.bindPolicy()` directly on-chain — the backend never touches premium funds. Body needs the resulting `onChainPolicyId` + `bindTxHash`. |
 | `GET /api/policy/:id` | Policy status. |
 | `POST /api/demo/simulate-incident` | **For the hackathon video.** Fires the exact same claims-agent code path the live monitor uses, on cue, so a payout can be triggered deterministically while recording instead of waiting on real polling latency. |
+| `GET /api/admin/policies` | **Testing-only.** Lists every policy regardless of status. Requires `X-Admin-Key` header. |
+| `PATCH /api/admin/policy/:id` | **Testing-only.** Directly edit a policy's coverage/status without redoing a real on-chain bind — see the important caveat below. |
+| `DELETE /api/admin/policy/:id` | **Testing-only.** Removes a policy from backend tracking so its address(es) can be rebound fresh. |
+
+### Admin routes — for testing coverage, not a real feature
+
+`routes/admin.ts` gates `PATCH`/`DELETE`/the policy list behind a shared secret (`ADMIN_API_KEY`, sent as `X-Admin-Key`). Set it in `.env` (`openssl rand -hex 24` is fine) — every admin route 401s if it's unset, rather than falling open. This is a real insurer never letting a policyholder edit their own coverage, so don't build a UI for this; it's for resetting state between test passes without spending testnet USDC on a fresh bind every time.
+
+**Important limitation, not a bug:** editing `coverageCap` here only changes the backend's own bookkeeping/display. The actual USDC amount `payClaim()` pays out is fixed on-chain in `PolicyVault` at bind time — there's no admin function on the contract to change it, deliberately (nothing, including the vault's owner, should be able to alter a bound policy's payout after the fact). To test a different payout amount, bind a fresh policy at that amount instead.
 
 ## The monitor + claims agent
 

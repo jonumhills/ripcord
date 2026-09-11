@@ -6,6 +6,7 @@ import { registerRiskRoutes } from "./routes/risk.js";
 import { registerQuoteRoutes } from "./routes/quote.js";
 import { registerPolicyRoutes } from "./routes/policy.js";
 import { registerDemoRoutes } from "./routes/demo.js";
+import { registerAdminRoutes } from "./routes/admin.js";
 import { startMonitor } from "./monitor/walletMonitor.js";
 
 const app = Fastify({ logger: true });
@@ -19,6 +20,7 @@ registerRiskRoutes(app);
 registerQuoteRoutes(app);
 registerPolicyRoutes(app);
 registerDemoRoutes(app);
+registerAdminRoutes(app);
 
 startMonitor();
 

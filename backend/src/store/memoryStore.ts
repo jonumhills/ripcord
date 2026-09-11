@@ -33,6 +33,19 @@ export function listActivePolicies(): Policy[] {
   return [...policies.values()].filter((p) => p.active);
 }
 
+/** Admin-only in practice (gated at the route level, not here) — every policy regardless of
+ * active/claimed status, for the admin dashboard/testing endpoints. */
+export function listAllPolicies(): Policy[] {
+  return [...policies.values()];
+}
+
+/** Removes a policy from the backend's own bookkeeping so it stops being monitored and the same
+ * address(es) can be rebound for another test pass. Does NOT touch the on-chain PolicyVault —
+ * see admin.ts's own doc comment for why that's a real limitation, not an oversight. */
+export function deletePolicy(id: string): boolean {
+  return policies.delete(id);
+}
+
 /** All active policies that cover a given address — what the monitor checks against on every event. */
 export function findPoliciesCovering(address: Address): Policy[] {
   const target = address.toLowerCase();
