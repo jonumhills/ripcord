@@ -15,7 +15,7 @@ import type { Address, AddressRiskScore, AddressSignals, ApprovalSignal } from "
 export async function assessAddress(address: Address): Promise<AddressRiskScore> {
   const [walletAgeDays, totalTransfers, goldrushApprovals, subgraphApprovals, counterparties] = await Promise.all([
     graphTokenApi.getWalletAgeDays(address),
-    graphTokenApi.getTotalTransferCount(address),
+    graphTokenApi.getRecentActivityCount(address),
     goldrush.getApprovals(address),
     graphSubgraph.getApprovalsFromSubgraph(address),
     graphTokenApi.getTransferCounterparties(address),
@@ -23,12 +23,23 @@ export async function assessAddress(address: Address): Promise<AddressRiskScore>
 
   const approvals = mergeApprovals(goldrushApprovals, subgraphApprovals);
 
+  // Only check verification for unique, UNLIMITED-allowance spenders, capped to the most recent
+  // 20 — that's the actual risk signal, not every spender a wallet has ever touched. A heavily
+  // used wallet can have 900+ historical spenders; checking each one individually against
+  // Sourcify's public instance gets rate-limited (429, confirmed live) long before it finishes.
+  const spendersToCheck = [
+    ...new Set(approvals.filter((a) => a.isUnlimited).map((a) => a.spender)),
+  ]
+    .sort((a, b) => {
+      const aApproval = approvals.find((x) => x.spender === a);
+      const bApproval = approvals.find((x) => x.spender === b);
+      return (aApproval?.lastUpdatedDaysAgo ?? Infinity) - (bApproval?.lastUpdatedDaysAgo ?? Infinity);
+    })
+    .slice(0, 20);
+
   const [contactedFlaggedAddresses, unverifiedApprovalSpenders] = await Promise.all([
     scamsniffer.filterFlagged(counterparties),
-    sourcify.filterUnverified(
-      approvals.map((a) => a.spender),
-      config.sourcify.walletChainId
-    ),
+    sourcify.filterUnverified(spendersToCheck, config.sourcify.walletChainId),
   ]);
 
   const signals: AddressSignals = {

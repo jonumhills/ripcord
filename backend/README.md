@@ -8,11 +8,25 @@ All core logic lives here: risk engine, quote engine, Arc chain client, wallet m
 |---|---|
 | Server boots, `/health` responds | ✅ Verified (`npm run dev`, `curl localhost:8080/health`) |
 | `npx tsc --noEmit` | ✅ Clean, 0 errors |
-| Token API integration (`graphTokenApi.ts`) | ✅ Endpoint shape verified live — see below |
-| GoldRush approvals | ⏳ Code correct, needs an API key to test live |
-| Subgraph approvals (`graphSubgraph.ts`) | ⏳ Code correct, needs `subgraph/` deployed first |
-| ScamSniffer / Sourcify | ✅ Free, no key — should work as soon as the vault/subgraph are deployed |
-| Monitor + claims agent | ⏳ Code correct, needs `POLICY_VAULT_ADDRESS` + `CLAIMS_AGENT_PRIVATE_KEY` to actually pay out |
+| `/api/risk/assess` end-to-end | ✅ **Live-tested** against a real wallet (vitalik.eth) with real API keys — real score, real reasons, ~5s response, zero errors |
+| `/api/quote` end-to-end | ✅ **Live-tested** — correctly risk-priced ($62.80 premium on $1,000 coverage for a "high" tier wallet) |
+| Token API integration (`graphTokenApi.ts`) | ✅ Live-verified, two real bugs fixed — see below |
+| GoldRush approvals | ✅ Live-verified, one real bug fixed — see below |
+| Subgraph approvals (`graphSubgraph.ts`) | ⏳ Code correct, needs `subgraph/` deployed to Studio first (falls back to GoldRush alone until then — confirmed no crash) |
+| Sourcify | ✅ Live-verified, migrated to v2 (v1 is dead) — see below |
+| ScamSniffer | ✅ Free, no key, works as-is |
+| PolicyVault on Arc | ✅ Deployed and wired in — `0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855`, see `contracts/README.md` |
+| Monitor + claims agent | Code correct and wired to the live vault; not yet triggered end-to-end (needs a real or simulated incident — see `/api/demo/simulate-incident`) |
+
+## Real bugs found and fixed by actually testing with live API keys (2026-09-11)
+
+Three separate integrations were guessed at before real keys were available, and all three turned out subtly wrong in different ways once tested for real — worth knowing exactly what changed:
+
+**Token API (`graphTokenApi.ts`):** Auth is `X-Api-Key: <key>`, not `Authorization: Bearer <key>` (Bearer gave a real 401; confirmed by testing both directly). There's no single `address` filter param — unrecognized query keys are silently accepted and ignored rather than rejected, which made the wrong param name (`address`) look like it was "working" while actually returning unfiltered global data. The real params, found by triggering the API's own Zod validation on bad values, are `from_address` and `to_address`. Also: **this API key's plan caps `limit` at 10** (a distinct 403 from the schema's general max of 1000) — confirmed live. That means "wallet age" can only honestly be a lower-bound approximation (oldest of the last 10 transfers in each direction) for any wallet with more history than that, which is most wallets. Documented directly in the function's own comment rather than presented as exact.
+
+**GoldRush (`goldrush.ts`):** The real response is nested by *token*, not a flat list of approvals — `data.items[]` is one entry per approved token, each with its own `spenders[]` array, not a top-level `spender_address` per item. Also, `allowance` can be the literal string `"UNLIMITED"`, not just a large numeric string — checked for explicitly now.
+
+**Sourcify (`sourcify.ts`):** The `/server/check-all-by-addresses` (v1) endpoint this used to call is dead — Sourcify's own docs: "API v1 has been completely turned off as of July 7, 2026." Migrated to v2: `GET /v2/contract/{chainId}/{address}`, 200 = verified, 404 = not. Separately, a heavily-used real wallet can have 900+ historical approval spenders — checking each one individually floods Sourcify's public instance and gets rate-limited (429, confirmed live) well before finishing. Fixed in `riskEngine.ts`: only unique spenders with an *unlimited* allowance are checked (that's the actual risk signal), capped to the 20 most recently updated.
 
 ## A design correction worth knowing about (2026-09-09)
 
