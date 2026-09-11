@@ -54,6 +54,14 @@ export const config = {
     walletChainId: Number(optional("WALLET_CHAIN_ID") || 1),
   },
 
+  testing: {
+    // Divides every computed premium by this factor — purely a testing knob so a lightly-funded
+    // testnet wallet can actually complete a bind, NOT a real pricing change. Defaults to 1 (no
+    // effect) so this can never silently discount pricing in a deployment that forgot to set it
+    // back — it has to be explicitly set to anything else. Applied once, in quoteEngine.ts.
+    premiumDivisor: Number(optional("PREMIUM_TEST_DIVISOR") || 1),
+  },
+
   arc: {
     rpcUrl: required("ARC_TESTNET_RPC_URL"),
     chainId: Number(optional("ARC_CHAIN_ID") || 0),

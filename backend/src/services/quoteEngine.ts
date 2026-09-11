@@ -1,3 +1,4 @@
+import { config } from "../config.js";
 import type { Address, AddressRiskScore, Quote, QuoteLineItem } from "../types.js";
 
 /**
@@ -60,7 +61,14 @@ export function buildQuote(scores: AddressRiskScore[], coverageCapPerAddress: bi
 function annualPremium(coverageCap: bigint, riskMultiplier: number): bigint {
   // riskMultiplier carries 2 decimal places of precision via integer math to avoid floats on-chain-adjacent values
   const rateBasisPoints = BigInt(Math.round(BASE_ANNUAL_RATE * riskMultiplier * 10_000));
-  return (coverageCap * rateBasisPoints) / 10_000n;
+  const premium = (coverageCap * rateBasisPoints) / 10_000n;
+
+  // Testing-only — see config.ts's testing.premiumDivisor. No effect (divides by 1) unless
+  // PREMIUM_TEST_DIVISOR is explicitly set in the environment.
+  if (config.testing.premiumDivisor !== 1) {
+    return premium / BigInt(config.testing.premiumDivisor);
+  }
+  return premium;
 }
 
 export function coverageCapFromUsd(usd: number, usdcDecimals = 6): bigint {
