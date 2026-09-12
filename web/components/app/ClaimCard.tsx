@@ -60,7 +60,7 @@ export function ClaimCard({ policy }: { policy: Policy }) {
       </div>
 
       <Link href={`/app/policy/${policy.id}`} className="text-xs text-muted hover:text-fg transition-colors">
-        View policy #{policy.id} →
+        View policy #{shortHash(policy.id)} →
       </Link>
     </div>
   );

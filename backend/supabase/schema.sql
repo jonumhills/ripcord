@@ -9,7 +9,11 @@
 --     and break entirely across more than one backend instance)
 
 create table if not exists policies (
-  id bigserial primary key,
+  -- A hash, not a counter — generated in app code (policyStore.ts's generatePolicyId()), same
+  -- '0x' + hex format as every address and tx hash already shown in the UI. A sequential integer
+  -- leaks how many policies exist and makes the next one guessable; nothing about this needs to
+  -- be sequential, so it isn't.
+  id text primary key,
   holder text not null,
   payout_address text not null,
   covered_addresses text[] not null,
@@ -40,7 +44,7 @@ create index if not exists policies_active_idx on policies (active) where active
 -- "claimed: true" boolean could never represent.
 create table if not exists claims (
   id bigserial primary key,
-  policy_id bigint not null references policies(id) on delete cascade,
+  policy_id text not null references policies(id) on delete cascade,
   submitted_tx_hash text not null,
   status text not null default 'pending',
     -- pending -> approved|denied ; approved -> paying -> paid|failed

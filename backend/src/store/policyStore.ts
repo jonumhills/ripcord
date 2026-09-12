@@ -1,3 +1,4 @@
+import { randomBytes, createHash } from "node:crypto";
 import { getPool } from "../db/pool.js";
 import type { Policy, Address } from "../types.js";
 
@@ -11,8 +12,18 @@ import type { Policy, Address } from "../types.js";
  * Run backend/supabase/schema.sql once on a fresh Supabase project before using this.
  */
 
+/** `0x` + 32 hex chars, same shape as every address/tx hash already shown in the UI — not a
+ * sequential counter, so it doesn't leak how many policies exist or make the next one guessable.
+ * Hashing `Date.now()` plus 16 random bytes (instead of just returning the random bytes raw) is
+ * belt-and-suspenders: even if the underlying CSPRNG were ever weak, the timestamp salt still
+ * varies the output, and hashing avoids ever exposing raw randomBytes output directly as an id. */
+function generatePolicyId(): string {
+  const seed = `${Date.now()}-${randomBytes(16).toString("hex")}`;
+  return "0x" + createHash("sha256").update(seed).digest("hex").slice(0, 32);
+}
+
 interface PolicyRow {
-  id: number;
+  id: string;
   holder: string;
   payout_address: string;
   covered_addresses: string[];
@@ -59,12 +70,13 @@ export async function createPolicy(policy: Omit<Policy, "id">): Promise<Policy> 
   // relying on every future caller to remember to normalize both sides itself.
   const { rows } = await getPool().query<PolicyRow>(
     `insert into policies
-       (holder, payout_address, covered_addresses, coverage_cap, premium_paid, start_time,
+       (id, holder, payout_address, covered_addresses, coverage_cap, premium_paid, start_time,
         expiry, active, claimed, on_chain_policy_id, bind_tx_hash, claimed_at, claim_tx_hash,
         claim_trigger_address)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      returning *`,
     [
+      generatePolicyId(),
       policy.holder.toLowerCase(),
       policy.payoutAddress.toLowerCase(),
       policy.coveredAddresses.map((a) => a.toLowerCase()),
@@ -85,7 +97,7 @@ export async function createPolicy(policy: Omit<Policy, "id">): Promise<Policy> 
 }
 
 export async function getPolicy(id: string): Promise<Policy | undefined> {
-  if (!/^\d+$/.test(id)) return undefined; // ids are bigserial — a non-numeric id can't match
+  if (!/^0x[0-9a-fA-F]+$/.test(id)) return undefined; // ids are generatePolicyId()'s 0x+hex shape
   const { rows } = await getPool().query<PolicyRow>("select * from policies where id = $1", [id]);
   return rows[0] ? fromRow(rows[0]) : undefined;
 }
@@ -135,7 +147,9 @@ export async function listActivePolicies(): Promise<Policy[]> {
 /** Admin-only in practice (gated at the route level, not here) — every policy regardless of
  * active/claimed status, for the admin dashboard/testing endpoints and /api/policies/mine. */
 export async function listAllPolicies(): Promise<Policy[]> {
-  const { rows } = await getPool().query<PolicyRow>("select * from policies order by id desc");
+  // Ordered by start_time, not id — id is now a hash (see generatePolicyId()), so it carries no
+  // chronological meaning to sort by.
+  const { rows } = await getPool().query<PolicyRow>("select * from policies order by start_time desc");
   return rows.map(fromRow);
 }
 

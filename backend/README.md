@@ -101,6 +101,10 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 
 Verified live end-to-end: schema applied to a real project, policy create/read/update/delete confirmed via direct SQL and the API, the full sign-in flow (real signature, nonce replay correctly rejected), and — a real bug caught in the process — addresses now stored lowercase, since Postgres's `@>` array-containment operator is case-sensitive and a checksummed (mixed-case) address from the frontend silently wouldn't have matched a lowercase query otherwise.
 
+### Policy IDs are hashes, not a counter (2026-09-12)
+
+`policies.id` was originally `bigserial` — `1`, `2`, `3`... A sequential integer leaks how many policies exist and makes the next one guessable, and it's the odd one out next to every address and transaction hash already shown in the UI, all `0x` + hex. Switched to `text primary key`, generated in app code by `policyStore.ts`'s `generatePolicyId()`: SHA-256 of `Date.now()` plus 16 random bytes, truncated to `0x` + 32 hex chars (16 bytes) — e.g. `0x6e3809d9022f320ea7f7c35bfb166ded`. `claims.policy_id` (the foreign key) moved from `bigint` to `text` to match; `claims.id` itself is untouched and stays `bigserial` — only the *policy* id needed this, since it's the one exposed in URLs and shown to the policyholder. Verified live: bind a policy → confirmed hash-shaped id back from `POST /api/policy/bind` → fetched it via `GET /api/policy/:id` → listed it via `GET /api/admin/policies` → filed a claim against it via `POST /api/claims` (confirms the FK against a `text` id works) → deleted it (confirms `on delete cascade` still works). The frontend (`PolicyCard.tsx`, `ClaimCard.tsx`) now truncates the id the same way it already truncates tx hashes, rather than printing all 34 characters inline.
+
 RLS is enabled on all three tables with no policies defined — the backend only ever connects with the database's own credentials (never an anon/public key), so this is pure defense in depth, not load-bearing for anything working.
 
 To start fresh: `DELETE /api/admin/policies`, or truncate the tables directly in the SQL editor.

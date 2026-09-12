@@ -3,7 +3,7 @@ import type { Address, Claim, ClaimCheck, ClaimStatus } from "../types.js";
 
 interface ClaimRow {
   id: number;
-  policy_id: number;
+  policy_id: string;
   submitted_tx_hash: string;
   status: ClaimStatus;
   from_address: string | null;

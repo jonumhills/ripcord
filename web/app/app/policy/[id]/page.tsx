@@ -54,9 +54,12 @@ export default function PolicyDashboardPage({ params }: { params: { id: string }
           ← Back to dashboard
         </Link>
 
-        <div className="flex items-center justify-between">
-          <h1 className="font-display font-semibold text-3xl tracking-[-0.02em]">Policy #{policy.id}</h1>
-          <span className={`badge ${statusClass}`}>{statusLabel}</span>
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-display font-semibold text-3xl tracking-[-0.02em]">Policy</h1>
+            <p className="font-mono text-xs text-muted mt-1 truncate">{policy.id}</p>
+          </div>
+          <span className={`badge ${statusClass} shrink-0`}>{statusLabel}</span>
         </div>
 
         <div className="card flex flex-col gap-5">

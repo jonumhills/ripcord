@@ -5,6 +5,9 @@ const USDC_DECIMALS = 6;
 function formatUsdc(raw: string) {
   return (Number(raw) / 10 ** USDC_DECIMALS).toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
+function shortHash(h: string) {
+  return `${h.slice(0, 10)}…${h.slice(-6)}`;
+}
 
 function statusOf(policy: Policy): { label: string; className: string } {
   if (policy.claimed) return { label: "Claim paid", className: "badge-low" };
@@ -50,7 +53,7 @@ export function PolicyCard({ policy }: { policy: Policy }) {
         </div>
       </div>
 
-      <span className="text-xs text-muted">Policy #{policy.id} · expires {new Date(policy.expiry).toLocaleDateString()}</span>
+      <span className="text-xs text-muted">Policy #{shortHash(policy.id)} · expires {new Date(policy.expiry).toLocaleDateString()}</span>
     </Link>
   );
 }

@@ -72,8 +72,31 @@ Note the two Graph products both run on **mainnet**, not Arc — Arc isn't a sup
 ## Where each sponsor fits (only where it's the right tool)
 
 - **The Graph** — two composed products, both load-bearing. (1) The Token API reads wallet age/activity for the risk engine, and doubles as the live-monitoring feed the claims agent watches (polling per insured address — a custom Subgraph can't watch arbitrary EOAs, since data sources are bound to fixed contract addresses). (2) `subgraph/` indexes `Approval` events from a curated set of major mainnet tokens (USDC/USDT/DAI/WETH) as a faster, independent second signal for the same "unlimited approval" risk factor. Full story on the design correction in `subgraph/README.md`.
-- **Arc** — `PolicyVault.sol` lives here: premiums pool here at bind time, claims pay out here via the autonomous claims agent. Testnet is enough to demo; mainnet deploy is a stretch goal only.
+- **Arc** — see "How Circle is used" below.
 - **Hedera** — not in the core path. Optional stretch: log claim evidence hashes to HCS as an audit trail. Skip it if it doesn't fit by the time you're polishing.
+
+## How Circle is used — Best DeFi/Onchain Finance Application
+
+Written against the track's own language, honestly — what's actually built, not aspirational.
+
+- **Arc is the entire settlement layer.** `PolicyVault.sol` is deployed and live on Arc testnet (`0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855`) — every premium and every payout happens there, nowhere else.
+- **USDC is the only currency in the system.** Not "supported" alongside other tokens — premiums, the pooled reserve, and payouts are exclusively USDC, including gas itself (Arc's native gas token *is* USDC).
+- **Conditional payments, not plain transfers.** `payClaim()` only executes if a policy is active, unclaimed, and unexpired, *and* the caller is the authorized claims agent — a real on-chain gate, not a bare `transfer`.
+- **Multi-step settlement.** A claim goes through independent on-chain verification (the adjuster re-reads the actual transaction from Arc), a conditional approval, and only then final settlement — see "The claims process" in `backend/README.md`.
+- **Treasury/reserve mechanics.** `PolicyVault` is a pooled USDC reserve, not a per-policy escrow — every premium ever collected sits in one contract, every claim draws from that same shared balance. That's a real treasury-management problem (reserve ratio vs. outstanding coverage), not just a payments pipe.
+
+**Circle's core product checklist — current state, not overclaimed:**
+
+| Product | Status |
+|---|---|
+| Arc | ✅ Deployed and live |
+| USDC | ✅ The only currency used, including for gas |
+| App Kits | ⏳ Not yet — Circle's Swap SDK (StableFX-based) has a confirmed working Arc reference (`circlefin/arc-stablecoin-fx`) |
+| Circle Wallets | ⏳ Not yet — the claims agent currently uses a raw private key; a Developer-Controlled Wallet is the natural fit (it's literally built for "triggering payouts... with full control over timing, amounts, and auditability") |
+| Circle Contracts (Smart Contract Platform) | ❌ Doesn't currently list Arc as a supported chain (Avalanche/Ethereum/Polygon only) |
+| CCTP | ⏳ Not yet — confirmed live on Arc testnet as a native interoperability primitive, with known deployed addresses (TokenMessengerV2, MessageTransmitterV2) |
+| Gateway | ⏳ Not yet — also confirmed live on Arc testnet |
+| StableFX | ⏳ Not yet — same Arc-confirmed Swap SDK reference as App Kits above |
 
 ## Getting started
 
