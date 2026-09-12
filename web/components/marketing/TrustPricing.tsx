@@ -7,7 +7,7 @@ const COMPETITORS = [
 
 export function TrustSection() {
   return (
-    <section className="wrap py-16 border-t border-border">
+    <section className="wrap py-24 border-t border-border">
       <span className="label-caps">Why parametric</span>
       <h2 className="font-display font-semibold text-2xl md:text-3xl tracking-[-0.02em] mt-3">
         Every other wallet cover makes you file a claim first
@@ -48,7 +48,7 @@ export function TrustSection() {
 
 export function Pricing() {
   return (
-    <section id="pricing" className="wrap py-16 border-t border-border">
+    <section id="pricing" className="wrap py-24 border-t border-border">
       <span className="label-caps">Pricing</span>
       <h2 className="font-display font-semibold text-2xl md:text-3xl tracking-[-0.02em] mt-3">
         Risk-priced, not flat-rate

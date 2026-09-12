@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function Hero() {
   return (
-    <section className="wrap pt-20 pb-16">
+    <section className="wrap pt-24 pb-24">
       <span className="label-caps">Parametric wallet insurance</span>
       <h1 className="font-display font-semibold text-fg mt-4 text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.05] tracking-[-0.035em] max-w-3xl">
         Get paid the moment your wallet is drained. No claim to file.
@@ -49,9 +49,9 @@ export function HowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" className="wrap py-16 border-t border-border">
+    <section id="how-it-works" className="wrap py-24 border-t border-border">
       <h2 className="font-display font-semibold text-2xl md:text-3xl tracking-[-0.02em]">How it works</h2>
-      <div className="grid md:grid-cols-4 gap-6 mt-10">
+      <div className="grid md:grid-cols-4 gap-6 mt-12">
         {steps.map((s) => (
           <div key={s.n} className="card">
             <span className="font-display text-primary text-sm">{s.n}</span>
