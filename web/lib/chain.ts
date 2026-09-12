@@ -86,7 +86,7 @@ export async function ensureArcChain(): Promise<void> {
   }
 }
 
-function getWalletClient() {
+export function getWalletClient() {
   if (!hasInjectedWallet()) throw new Error("No injected wallet found");
   return createWalletClient({ chain: arcTestnet, transport: custom(window.ethereum) });
 }

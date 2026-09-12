@@ -8,7 +8,7 @@ Built for ETHGlobal Online. Everything below has actually been run, not just wri
 
 | Piece | Status |
 |---|---|
-| `contracts/` | ✅ Compiles clean, **7/7 tests passing**, **deployed live on Arc testnet** — see below |
+| `contracts/` | ✅ Compiles clean, **10/10 tests passing**, **deployed live on Arc testnet** — see below |
 | `subgraph/` | ✅ `codegen` + `build` verified — compiles to deployable WASM. Not yet deployed to Studio. |
 | `backend/` | ✅ **Full pipeline live-tested end-to-end** — real risk score + real quote against a real wallet, real API keys, wired to the deployed vault, backed by real Postgres (Supabase). Several real bugs found and fixed along the way; see `backend/README.md` |
 | `web/` | ✅ `npm run build` succeeds clean across all 7 routes (added `/dashboard`, sign-in) — several real bugs found and fixed along the way (SSR crash, missing Suspense boundary, wallet always reusing the old account, missing Arc chain switch), see `web/README.md` |
@@ -18,6 +18,19 @@ Built for ETHGlobal Online. Everything below has actually been run, not just wri
 ### PolicyVault is live
 
 Deployed to Arc testnet 2026-09-11: **`0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855`** — [view on Arcscan](https://testnet.arcscan.app/address/0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855). Full deploy details (owner, claims agent, cost, post-deploy verification) in `contracts/README.md`. `backend/.env` and `web/.env.local` are already pointed at it locally — both gitignored, so re-set them from `.env.example` + this address if you're cloning fresh.
+
+## The hackathon demo — shot list
+
+Verified this entire sequence live end-to-end on Arc testnet (2026-09-12) using a test wallet standing in for a real user — real transactions throughout, not simulated except where noted. `contracts/README.md` has the full technical writeup, including a real bug the verification run caught (the claims agent wallet needs its own USDC for gas, separate from the vault's pooled premiums — check that first if a claim payout ever silently fails).
+
+1. **Bind a policy.** `/app` → add the wallet you'll drain on camera → check risk → get a quote → `/bind` → pay the premium. Land on the "Policy bound" confirmation.
+2. **Cut to `/demo/scam-airdrop`.** A staged, clearly-labeled "claim your airdrop" lure — this is the one page in the whole app that's deliberately *not* styled like Ripcord, on purpose, to sell the phishing-site narrative. Click "Connect Wallet & Claim."
+3. **Sign the approval.** This is the real "scam transaction" moment — MetaMask's spending-cap prompt, identical in kind to what an actual phishing site shows. Approves `MockDrainer.sol` for a small, real amount of testnet USDC.
+4. **Watch the drain happen.** The page automatically calls `MockDrainer.drain()` right after — a second real transaction, pulling exactly what was approved via `transferFrom`. The reveal screen shows the real tx hash, linked to Arcscan.
+5. **Trigger the payout.** Paste the policy ID from step 1, click "Trigger Ripcord's automatic payout." This calls the same claims-agent code path the live monitor would — verified paying out for real: a `Transfer` event of the exact coverage amount from `PolicyVault` to the payout address, `ClaimPaid` emitted, policy flips to claimed.
+6. **Cut to `/dashboard`.** The policy now shows under the **Claims** tab with the real payout record — amount, timestamp, what triggered it, tx hash.
+
+The whole loop — sign a scam approval, get drained, get paid back automatically — fits comfortably inside a 3-4 minute recording.
 
 ## Repo layout
 

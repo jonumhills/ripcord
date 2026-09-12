@@ -6,7 +6,8 @@
 
 | Item | Status |
 |---|---|
-| `PolicyVault.sol` | ✅ Compiles clean (`forge build`), 7/7 tests passing (`forge test`) |
+| `PolicyVault.sol` | ✅ Compiles clean (`forge build`), 10/10 tests passing (`forge test`) |
+| `MockDrainer.sol` | ✅ Deployed to Arc testnet, full bind→drain→claim loop verified live end-to-end (real transactions, not mocked) |
 | Reentrancy ordering | ✅ Fixed — `bindPolicy` now does all state writes before the external `transferFrom` call |
 | Zero-address guards | ✅ Added on constructor and `setClaimsAgent` |
 | Arc testnet connectivity | ✅ Verified live — see below |
@@ -88,6 +89,20 @@ Ran 7 tests for test/PolicyVault.t.sol:PolicyVaultTest
 [PASS] test_revert_onExpiredPolicy() (gas: 329598)
 [PASS] test_revert_whenStrangerCallsPayClaim() (gas: 326650)
 Suite result: ok. 7 passed; 0 failed; 0 skipped
+```
+
+## MockDrainer — the hackathon demo's "scam transaction"
+
+`src/mocks/MockDrainer.sol` reproduces the actual mechanics of a wallet-drainer phishing site — approve a spending cap, get pulled via `transferFrom` — rather than faking the drain some other way. Deployed on Arc testnet: **`0xF4038CdC67ED8cb8e059F719345336bcD808F201`**. `drain(token, victim)` is deliberately permissionless (anyone can call it once a victim has approved it) — a real drainer bot does the same thing, it doesn't wait for permission either. See `web/app/demo/scam-airdrop/page.tsx` for the page that drives this, and root `README.md` for the full demo shot list.
+
+Real bug caught by its own test before this ever touched Arc testnet: when an approval is "unlimited" (`type(uint256).max`), the contract initially tried to literally transfer that number instead of the victim's actual balance, and reverted with "insufficient balance." Fixed to pull `min(allowance, balance)` — the same distinction a real drainer's bot has to get right.
+
+## Operational gotcha that will silently break claim payouts
+
+**The claims agent wallet needs its own USDC for gas** — separate from `PolicyVault`'s pooled premiums. `payClaim()` is submitted *by* the claims agent (`CLAIMS_AGENT_PRIVATE_KEY` in `backend/.env`), and since USDC is Arc's native gas token, that wallet needs a small USDC balance just to pay for its own transaction — the vault having plenty to pay *out* doesn't help if the agent can't afford to *call* `payClaim` in the first place. Hit this live: the first real claim attempt failed with "insufficient funds for gas," not because anything was misconfigured, but because the claims agent wallet had never been funded at all. Fixed by sending it 0.1 USDC (pure gas money — each `payClaim` call costs a small fraction of a cent). If claims start silently failing after a fresh deploy, check this first:
+
+```bash
+cast call 0x3600000000000000000000000000000000000000 "balanceOf(address)(uint256)" <claims-agent-address> --rpc-url https://rpc.testnet.arc.network
 ```
 
 ## What's deliberately not here

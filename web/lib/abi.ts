@@ -1,3 +1,17 @@
+// Demo-only — mirrors contracts/src/mocks/MockDrainer.sol. See app/demo/scam-airdrop/page.tsx.
+export const mockDrainerAbi = [
+  {
+    type: "function",
+    name: "drain",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "token", type: "address" },
+      { name: "victim", type: "address" },
+    ],
+    outputs: [{ name: "amount", type: "uint256" }],
+  },
+] as const;
+
 // Mirrors backend/src/chain/policyVaultAbi.ts — the subset the browser wallet needs to call
 // bindPolicy() directly (self-custody: the user's own wallet pays the premium, never the backend).
 export const policyVaultAbi = [

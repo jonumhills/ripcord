@@ -26,7 +26,8 @@ npm run dev   # http://localhost:3000 (or the next free port if that's taken)
 | `/dashboard` | **"My wallets"** — every policy tied to the signed-in address, as holder or covered address, split into **Policies** and **Claims** tabs. A claim shows the real payout record (amount, when, what triggered it, tx hash linked to Arcscan) via `claimedAt`/`claimTxHash`/`claimTriggerAddress`, not just a `claimed: true` boolean. Requires sign-in (see below); empty and loading states both designed, not just missing. |
 | `/connect` | Wallet-connect handshake page the extension opens in a real tab (see `extension/README.md` for why). |
 | `/bind` | Reads `?addresses=&coverageCapUsd=` from either `/app` or the extension, connects a wallet, switches it to Arc Testnet if needed, approves USDC, calls `PolicyVault.bindPolicy()` directly from the user's wallet, then registers the policy with the backend for monitoring. Shows a step tracker (Review → Connect → Sign). |
-| `/app/policy/[id]` | Policy dashboard. **This is the page to have open for the hackathon video** — it has the "Simulate incident" panel that fires the real claims-agent payout path on cue. |
+| `/app/policy/[id]` | Policy dashboard. Has a "Simulate incident" panel that fires the real claims-agent payout path on cue, without needing the staged drain below. |
+| `/demo/scam-airdrop` | **The centerpiece of the hackathon video.** A staged, clearly-labeled "phishing site" that reproduces a real wallet-drainer attack against `contracts/src/mocks/MockDrainer.sol` — a real approval you sign, a real drain, then a real automatic payout. See root `README.md`'s demo shot list. |
 
 ## Navigation flow (fixed 2026-09-12)
 
