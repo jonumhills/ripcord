@@ -6,7 +6,7 @@ import { registerRiskRoutes } from "./routes/risk.js";
 import { registerQuoteRoutes } from "./routes/quote.js";
 import { registerPolicyRoutes } from "./routes/policy.js";
 import { registerAuthRoutes } from "./routes/auth.js";
-import { registerDemoRoutes } from "./routes/demo.js";
+import { registerClaimsRoutes } from "./routes/claims.js";
 import { registerAdminRoutes } from "./routes/admin.js";
 import { startMonitor } from "./monitor/walletMonitor.js";
 
@@ -21,7 +21,7 @@ registerRiskRoutes(app);
 registerQuoteRoutes(app);
 registerPolicyRoutes(app);
 registerAuthRoutes(app);
-registerDemoRoutes(app);
+registerClaimsRoutes(app);
 registerAdminRoutes(app);
 
 startMonitor();

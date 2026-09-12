@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Nav } from "@/components/Nav";
-import { getPolicy, simulateIncident } from "@/lib/api";
+import { ClaimPanel } from "@/components/app/ClaimPanel";
+import { getPolicy } from "@/lib/api";
 import type { Policy } from "@/lib/types";
 
 const USDC_DECIMALS = 6;
@@ -11,18 +12,11 @@ function formatUsdc(raw: string) {
   return (Number(raw) / 10 ** USDC_DECIMALS).toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-/**
- * The policy dashboard — and the page to have open when recording the hackathon demo video.
- * The "Simulate incident" panel is demo-only: it calls the exact same claims-agent code path
- * the live monitor calls (see backend/src/routes/demo.ts), just triggered on cue instead of
- * waiting on real subgraph indexing latency while the camera is rolling.
- */
+/** The policy detail page. Below the policy summary, either the real claim-filing panel (paste a
+ * tx hash, the adjuster reviews it live) or, once paid, the payout confirmation. */
 export default function PolicyDashboardPage({ params }: { params: { id: string } }) {
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [triggerAddress, setTriggerAddress] = useState("");
-  const [txHash, setTxHash] = useState("");
-  const [firing, setFiring] = useState(false);
 
   async function refresh() {
     try {
@@ -35,36 +29,8 @@ export default function PolicyDashboardPage({ params }: { params: { id: string }
 
   useEffect(() => {
     refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
-
-  // While a claim is in flight, poll until the policy flips to claimed — that's the moment
-  // to cut to on camera.
-  useEffect(() => {
-    if (!firing) return;
-    const interval = setInterval(refresh, 1500);
-    return () => clearInterval(interval);
-  }, [firing]);
-
-  useEffect(() => {
-    if (policy?.claimed) setFiring(false);
-  }, [policy?.claimed]);
-
-  async function handleSimulate() {
-    if (!policy) return;
-    setFiring(true);
-    setError(null);
-    try {
-      await simulateIncident({
-        policyId: policy.id,
-        triggerAddress,
-        fromAddress: policy.coveredAddresses[0],
-        txHash: txHash || `0xdemo${Date.now().toString(16)}`,
-      });
-    } catch (err) {
-      setFiring(false);
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
 
   if (!policy) {
     return (
@@ -123,8 +89,8 @@ export default function PolicyDashboardPage({ params }: { params: { id: string }
                 <span className="label-caps text-primary">Payout complete</span>
                 <p className="text-fg mt-1.5 leading-relaxed">
                   ${formatUsdc(policy.coverageCap)} USDC sent to{" "}
-                  <span className="font-mono text-sm">{policy.payoutAddress}</span> — no claim form,
-                  no review, no wait.
+                  <span className="font-mono text-sm">{policy.payoutAddress}</span> — one transaction
+                  ID, no human review, paid in seconds.
                 </p>
               </div>
               <div className="flex flex-col gap-1.5 text-xs text-muted pt-1">
@@ -149,35 +115,7 @@ export default function PolicyDashboardPage({ params }: { params: { id: string }
           </div>
         )}
 
-        {!policy.claimed && (
-          <div className="card flex flex-col gap-4">
-            <div>
-              <span className="label-caps">Simulate incident (demo)</span>
-              <p className="text-xs text-muted mt-1.5 leading-relaxed">
-                Fires the same claims-agent path the live monitor uses. Use a pre-seeded flagged
-                address here for the video — see backend README for how the registry is seeded.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2.5">
-              <input
-                className="input"
-                placeholder="Flagged destination address (0x…)"
-                value={triggerAddress}
-                onChange={(e) => setTriggerAddress(e.target.value)}
-              />
-              <input
-                className="input"
-                placeholder="Drain tx hash (optional — leave blank for a demo hash)"
-                value={txHash}
-                onChange={(e) => setTxHash(e.target.value)}
-              />
-            </div>
-            <button className="btn btn-primary self-start" disabled={!triggerAddress || firing} onClick={handleSimulate}>
-              {firing && <span className="inline-block h-2 w-2 rounded-full bg-on-primary animate-pulse" />}
-              {firing ? "Watching for payout…" : "Trigger drain event →"}
-            </button>
-          </div>
-        )}
+        {!policy.claimed && <ClaimPanel policyId={policy.id} onPaid={refresh} />}
 
         {error && <p className="text-no-bg text-sm">{error}</p>}
       </main>

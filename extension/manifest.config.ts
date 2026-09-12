@@ -3,7 +3,7 @@ import { defineManifest } from "@crxjs/vite-plugin";
 export default defineManifest({
   manifest_version: 3,
   name: "Ripcord — Wallet Risk & Cover",
-  description: "Score any wallet's drain risk, get a live quote, and get covered — parametric payouts, no claims form.",
+  description: "Score any wallet's drain risk, get a live quote, and get covered — submit a transaction ID, an automated adjuster decides in seconds.",
   version: "0.1.0",
   action: {
     default_popup: "index.html",

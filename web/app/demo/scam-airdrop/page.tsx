@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { connectWallet, ensureArcChain, usdcToUnits, formatUsdcUnits } from "@/lib/chain";
-import { approveScamAirdrop, triggerDrain, MOCK_DRAINER_ADDRESS } from "@/lib/demoDrain";
-import { getPolicy, simulateIncident } from "@/lib/api";
-import type { Policy } from "@/lib/types";
+import { approveScamAirdrop, triggerDrain } from "@/lib/demoDrain";
+import { getPolicy, submitClaim } from "@/lib/api";
+import type { Policy, Claim } from "@/lib/types";
 
 const EXPLORER_TX_BASE = "https://testnet.arcscan.app/tx/";
 const DRAIN_AMOUNT_USD = 2; // modest, real, on-chain — leaves plenty of headroom for the rest of the demo
 
-type Stage = "idle" | "connecting" | "approving" | "draining" | "drained" | "triggering" | "paid";
+type Stage = "idle" | "connecting" | "approving" | "draining" | "drained" | "reviewing" | "reviewed";
 
 function shortHash(h: string) {
   return `${h.slice(0, 10)}…${h.slice(-6)}`;
@@ -30,6 +30,7 @@ export default function ScamAirdropDemoPage() {
   const [drainTxHash, setDrainTxHash] = useState<string | null>(null);
   const [policyIdInput, setPolicyIdInput] = useState("");
   const [policy, setPolicy] = useState<Policy | null>(null);
+  const [claim, setClaim] = useState<Claim | null>(null);
   const [seconds, setSeconds] = useState(212); // pure flavor — a static countdown sells the urgency lure
 
   useEffect(() => {
@@ -58,20 +59,18 @@ export default function ScamAirdropDemoPage() {
     }
   }
 
-  async function handleTriggerPayout() {
-    if (!account || !drainTxHash || !policyIdInput) return;
+  async function handleFileClaim() {
+    if (!drainTxHash || !policyIdInput) return;
     setError(null);
-    setStage("triggering");
+    setStage("reviewing");
     try {
-      await simulateIncident({
-        policyId: policyIdInput,
-        triggerAddress: MOCK_DRAINER_ADDRESS,
-        fromAddress: account,
-        txHash: drainTxHash,
-      });
-      const { policy: updated } = await getPolicy(policyIdInput);
-      setPolicy(updated);
-      setStage("paid");
+      const { claim: result } = await submitClaim(policyIdInput, drainTxHash);
+      setClaim(result);
+      if (result.status === "paid") {
+        const { policy: updated } = await getPolicy(policyIdInput);
+        setPolicy(updated);
+      }
+      setStage("reviewed");
     } catch (err) {
       setStage("drained");
       setError(err instanceof Error ? err.message : String(err));
@@ -113,7 +112,7 @@ export default function ScamAirdropDemoPage() {
       </div>
 
       <div style={{ maxWidth: 480, width: "100%", marginTop: 48, textAlign: "center" }}>
-        {stage !== "drained" && stage !== "triggering" && stage !== "paid" && (
+        {stage !== "drained" && stage !== "reviewing" && stage !== "reviewed" && (
           <>
             <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 8 }}>⏰ Offer ends in {mins}:{secs}</div>
             <h1 style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.1, margin: 0 }}>
@@ -152,7 +151,7 @@ export default function ScamAirdropDemoPage() {
           </>
         )}
 
-        {(stage === "drained" || stage === "triggering" || stage === "paid") && (
+        {(stage === "drained" || stage === "reviewing" || stage === "reviewed") && (
           <div
             style={{
               background: "#0009",
@@ -162,7 +161,7 @@ export default function ScamAirdropDemoPage() {
               textAlign: "left",
             }}
           >
-            {stage !== "paid" && (
+            {stage !== "reviewed" && (
               <>
                 <div style={{ fontSize: 32 }}>💀</div>
                 <h2 style={{ fontSize: 22, marginTop: 8 }}>Your wallet was just drained</h2>
@@ -171,22 +170,13 @@ export default function ScamAirdropDemoPage() {
                   you signed — exactly how a real wallet-drainer phishing site works. This was
                   ${DRAIN_AMOUNT_USD} in testnet USDC, on Arc, for real.
                 </p>
-                {drainTxHash && (
-                  <a
-                    href={`${EXPLORER_TX_BASE}${drainTxHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ display: "block", marginTop: 10, fontSize: 12, color: "#f0abfc", fontFamily: "monospace" }}
-                  >
-                    {shortHash(drainTxHash)} ↗
-                  </a>
-                )}
 
                 <div style={{ height: 1, background: "#ffffff22", margin: "20px 0" }} />
 
                 <p style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.6 }}>
                   This is exactly the scenario Ripcord covers. Enter the policy ID covering this
-                  wallet to trigger the same automatic payout the live monitor would.
+                  wallet — the transaction ID is already filled in below, from the drain that just
+                  happened — and Ripcord's adjuster will read it from Arc and decide for itself.
                 </p>
                 <input
                   value={policyIdInput}
@@ -203,9 +193,25 @@ export default function ScamAirdropDemoPage() {
                     fontSize: 14,
                   }}
                 />
+                <input
+                  value={drainTxHash ?? ""}
+                  onChange={(e) => setDrainTxHash(e.target.value)}
+                  placeholder="Transaction ID"
+                  style={{
+                    marginTop: 8,
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #ffffff33",
+                    background: "#ffffff11",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontFamily: "monospace",
+                  }}
+                />
                 <button
-                  onClick={handleTriggerPayout}
-                  disabled={!policyIdInput || stage === "triggering"}
+                  onClick={handleFileClaim}
+                  disabled={!policyIdInput || !drainTxHash || stage === "reviewing"}
                   style={{
                     marginTop: 12,
                     width: "100%",
@@ -219,29 +225,37 @@ export default function ScamAirdropDemoPage() {
                     cursor: "pointer",
                   }}
                 >
-                  {stage === "triggering" ? "Paying out…" : "Trigger Ripcord's automatic payout →"}
+                  {stage === "reviewing" ? "Adjuster reviewing…" : "Submit claim for review →"}
                 </button>
               </>
             )}
 
-            {stage === "paid" && policy && (
+            {stage === "reviewed" && claim && (
               <>
-                <div style={{ fontSize: 32 }}>✅</div>
-                <h2 style={{ fontSize: 22, marginTop: 8, color: "#33e667" }}>Claim paid — automatically</h2>
-                <p style={{ opacity: 0.85, marginTop: 10, lineHeight: 1.6, fontSize: 14 }}>
-                  ${formatUsdcUnits(BigInt(policy.coverageCap))} USDC sent to{" "}
-                  <span style={{ fontFamily: "monospace" }}>{policy.payoutAddress}</span> — no claim
-                  form, no review, no wait. Detected → paid, start to finish, in one transaction.
-                </p>
-                {policy.claimTxHash && (
-                  <a
-                    href={`${EXPLORER_TX_BASE}${policy.claimTxHash}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ display: "block", marginTop: 10, fontSize: 12, color: "#33e667", fontFamily: "monospace" }}
-                  >
-                    {shortHash(policy.claimTxHash)} ↗
-                  </a>
+                <div style={{ fontSize: 32 }}>{claim.verdict === "approved" ? "✅" : "🛑"}</div>
+                <h2 style={{ fontSize: 22, marginTop: 8, color: claim.verdict === "approved" ? "#33e667" : "#fca5a5" }}>
+                  {claim.verdict === "approved" ? "Claim approved" : "Claim denied"}
+                </h2>
+                <p style={{ opacity: 0.85, marginTop: 10, lineHeight: 1.6, fontSize: 13.5 }}>{claim.reasoning}</p>
+
+                {claim.status === "paid" && policy && (
+                  <>
+                    <div style={{ height: 1, background: "#ffffff22", margin: "16px 0" }} />
+                    <p style={{ fontSize: 14, lineHeight: 1.6, color: "#33e667", fontWeight: 600 }}>
+                      ${formatUsdcUnits(BigInt(policy.coverageCap))} USDC paid to {policy.payoutAddress.slice(0, 6)}…
+                      {policy.payoutAddress.slice(-4)}
+                    </p>
+                    {claim.payoutTxHash && (
+                      <a
+                        href={`${EXPLORER_TX_BASE}${claim.payoutTxHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: "block", marginTop: 6, fontSize: 12, color: "#33e667", fontFamily: "monospace" }}
+                      >
+                        {shortHash(claim.payoutTxHash)} ↗
+                      </a>
+                    )}
+                  </>
                 )}
               </>
             )}

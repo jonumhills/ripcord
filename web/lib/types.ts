@@ -40,3 +40,30 @@ export interface Policy {
   claimTxHash: string | null;
   claimTriggerAddress: string | null;
 }
+
+export type ClaimStatus = "pending" | "approved" | "denied" | "paying" | "paid" | "failed";
+
+export interface ClaimCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface Claim {
+  id: string;
+  policyId: string;
+  submittedTxHash: string;
+  status: ClaimStatus;
+  fromAddress: string | null;
+  triggerAddress: string | null;
+  tokenAddress: string | null;
+  amount: string | null;
+  verdict: "approved" | "denied" | null;
+  reasoning: string | null;
+  checks: ClaimCheck[] | null;
+  payoutTxHash: string | null;
+  failureReason: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  paidAt: string | null;
+}

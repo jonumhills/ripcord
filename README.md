@@ -1,6 +1,6 @@
 # Ripcord
 
-Parametric wallet insurance. Add an address, get a live risk score, get a quote, bind a policy, get paid automatically the moment an insured wallet is drained to a known-bad address — no claims form, no DAO vote.
+Parametric wallet insurance. Add an address, get a live risk score, get a quote, bind a policy. Submit a claim by pasting the transaction hash of the drain — an automated adjuster reads it directly from Arc, decides in seconds, and shows its reasoning. No human review, no DAO vote, no days-long wait.
 
 ## Status (updated 2026-09-09)
 
@@ -21,16 +21,17 @@ Deployed to Arc testnet 2026-09-11: **`0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb8985
 
 ## The hackathon demo — shot list
 
-Verified this entire sequence live end-to-end on Arc testnet (2026-09-12) using a test wallet standing in for a real user — real transactions throughout, not simulated except where noted. `contracts/README.md` has the full technical writeup, including a real bug the verification run caught (the claims agent wallet needs its own USDC for gas, separate from the vault's pooled premiums — check that first if a claim payout ever silently fails).
+Verified this entire sequence live end-to-end on Arc testnet (2026-09-12) using a test wallet standing in for a real user — real transactions throughout, nothing simulated. `contracts/README.md` and `backend/README.md` have the full technical writeups, including two real bugs the verification runs caught: the claims agent wallet needs its own USDC for gas separate from the vault's pooled premiums, and the adjuster initially mis-parsed a sentinel log Arc emits alongside every real USDC transfer.
 
 1. **Bind a policy.** `/app` → add the wallet you'll drain on camera → check risk → get a quote → `/bind` → pay the premium. Land on the "Policy bound" confirmation.
 2. **Cut to `/demo/scam-airdrop`.** A staged, clearly-labeled "claim your airdrop" lure — this is the one page in the whole app that's deliberately *not* styled like Ripcord, on purpose, to sell the phishing-site narrative. Click "Connect Wallet & Claim."
 3. **Sign the approval.** This is the real "scam transaction" moment — MetaMask's spending-cap prompt, identical in kind to what an actual phishing site shows. Approves `MockDrainer.sol` for a small, real amount of testnet USDC.
-4. **Watch the drain happen.** The page automatically calls `MockDrainer.drain()` right after — a second real transaction, pulling exactly what was approved via `transferFrom`. The reveal screen shows the real tx hash, linked to Arcscan.
-5. **Trigger the payout.** Paste the policy ID from step 1, click "Trigger Ripcord's automatic payout." This calls the same claims-agent code path the live monitor would — verified paying out for real: a `Transfer` event of the exact coverage amount from `PolicyVault` to the payout address, `ClaimPaid` emitted, policy flips to claimed.
-6. **Cut to `/dashboard`.** The policy now shows under the **Claims** tab with the real payout record — amount, timestamp, what triggered it, tx hash.
+4. **Watch the drain happen.** The page automatically calls `MockDrainer.drain()` right after — a second real transaction, pulling exactly what was approved via `transferFrom`.
+5. **File the claim.** The policy ID and the real drain transaction ID are already filled in — click "Submit claim for review." This is the moment to linger on: the adjuster's full checklist appears (policy checks, transaction lookup, sender match, destination match), followed by its reasoning, assembled from what it actually found on-chain — not a canned response.
+6. **Watch it pay.** Verdict flips to "Approved," the payout fires immediately, and the real transaction hash appears — a `Transfer` event of the exact coverage amount from `PolicyVault` to the payout address, confirmed on Arcscan.
+7. **Cut to `/dashboard`.** The policy now shows under the **Claims** tab with the real payout record — amount, timestamp, what triggered it, tx hash.
 
-The whole loop — sign a scam approval, get drained, get paid back automatically — fits comfortably inside a 3-4 minute recording.
+The whole loop — sign a scam approval, get drained, file a claim, watch an automated adjuster verify and pay it — fits comfortably inside a 3-4 minute recording, and step 5 is the part worth not rushing through: it's the whole pitch, happening on screen.
 
 ## Repo layout
 

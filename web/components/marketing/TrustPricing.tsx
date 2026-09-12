@@ -10,14 +10,15 @@ export function TrustSection() {
     <section className="wrap py-24 border-t border-border">
       <span className="label-caps">Why parametric</span>
       <h2 className="font-display font-semibold text-2xl md:text-3xl tracking-[-0.02em] mt-3">
-        Every other wallet cover makes you file a claim first
+        Every other wallet cover makes a human decide
       </h2>
       <p className="text-muted mt-4 max-w-2xl leading-relaxed">
-        Ripcord doesn't assess loss after the fact — it prices and pays against a defined,
+        Ripcord doesn't send your claim to a committee — it prices and pays against a defined,
         provable trigger: your covered wallet sending funds to an address already known to be a
-        drainer. That's provable, unfakeable, and fast. The trade-off, stated plainly: coverage is
-        narrower than a human-reviewed claim, because we only pay on triggers we can prove
-        on-chain — not on every conceivable way to lose funds.
+        drainer. Submit the transaction ID and an automated adjuster decides in seconds, not days.
+        That's provable, unfakeable, and fast. The trade-off, stated plainly: coverage is narrower
+        than a human-reviewed claim, because we only pay on triggers we can prove on-chain — not
+        on every conceivable way to lose funds.
       </p>
 
       <div className="overflow-x-auto mt-10">

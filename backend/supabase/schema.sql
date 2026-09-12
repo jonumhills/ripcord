@@ -33,6 +33,33 @@ create index if not exists policies_covered_addresses_idx on policies using gin 
 create index if not exists policies_holder_idx on policies (holder);
 create index if not exists policies_active_idx on policies (active) where active = true;
 
+-- A claim is its own record, separate from the policy's own claimed/claimedAt/claimTxHash
+-- summary fields (kept as-is so the dashboard/policy-detail UI built against them keeps working
+-- unchanged) — this is the detailed, auditable history: every submission, what the adjuster
+-- checked, its reasoning, and how the payout went, including denied and failed attempts a bare
+-- "claimed: true" boolean could never represent.
+create table if not exists claims (
+  id bigserial primary key,
+  policy_id bigint not null references policies(id) on delete cascade,
+  submitted_tx_hash text not null,
+  status text not null default 'pending',
+    -- pending -> approved|denied ; approved -> paying -> paid|failed
+  from_address text,
+  trigger_address text,
+  token_address text,
+  amount text,
+  verdict text,               -- 'approved' | 'denied', set once the adjuster finishes
+  reasoning text,              -- the adjuster's assembled, human-readable explanation
+  checks jsonb,                 -- ordered list of {label, passed, detail} the adjuster ran
+  payout_tx_hash text,
+  failure_reason text,
+  submitted_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  paid_at timestamptz
+);
+create index if not exists claims_policy_id_idx on claims (policy_id);
+create index if not exists claims_status_idx on claims (status);
+
 create table if not exists auth_nonces (
   address text primary key,
   message text not null,
@@ -50,5 +77,6 @@ create index if not exists auth_sessions_address_idx on auth_sessions (address);
 -- which bypasses RLS regardless — but enabling RLS with no policies defined means even a leaked
 -- anon/public key can't read or write anything here. Costs nothing, breaks nothing.
 alter table policies enable row level security;
+alter table claims enable row level security;
 alter table auth_nonces enable row level security;
 alter table auth_sessions enable row level security;

@@ -5,12 +5,13 @@ export function Hero() {
     <section className="wrap pt-24 pb-24">
       <span className="label-caps">Parametric wallet insurance</span>
       <h1 className="font-display font-semibold text-fg mt-4 text-[clamp(2.2rem,5vw,3.6rem)] leading-[1.05] tracking-[-0.035em] max-w-3xl">
-        Get paid the moment your wallet is drained. No claim to file.
+        One transaction ID. Paid in seconds — no human ever reviews it.
       </h1>
       <p className="text-muted text-base md:text-lg mt-6 max-w-xl leading-relaxed">
         Add any address. Get a live risk score computed from real on-chain data. Get a quote.
-        Get covered. If a covered wallet sends funds to a known-flagged address, your payout is
-        automatic — no claims form, no DAO vote, no waiting on an assessor.
+        Get covered. If your wallet gets drained, paste the transaction ID — an automated adjuster
+        reads it straight from the chain, decides, and pays out. No form to sit in a queue, no
+        DAO vote, no waiting on an assessor.
       </p>
       <div className="flex items-center gap-3 mt-8">
         <Link href="/app" className="btn btn-primary">
@@ -43,8 +44,8 @@ export function HowItWorks() {
     },
     {
       n: "04",
-      title: "Automatic payout",
-      body: "A monitoring agent watches your covered addresses. A flagged-destination drain triggers a payout by itself — no form, no vote.",
+      title: "File a claim, get paid",
+      body: "Paste the transaction ID. An automated adjuster reads it from the chain, checks it against your policy, and pays out — in seconds, no human in the loop.",
     },
   ];
 

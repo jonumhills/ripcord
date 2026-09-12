@@ -1,4 +1,4 @@
-import type { AddressRiskScore, Quote, Policy } from "./types";
+import type { AddressRiskScore, Quote, Policy, Claim } from "./types";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
@@ -48,15 +48,21 @@ export function getPolicy(id: string) {
   return request<{ policy: Policy }>(`/api/policy/${id}`);
 }
 
-/** Demo-only: fires the same claims-agent path the live monitor uses, on cue. See backend/README.md. */
-export function simulateIncident(payload: {
-  policyId: string;
-  triggerAddress: string;
-  fromAddress: string;
-  txHash: string;
-}) {
-  return request<{ status: string }>("/api/demo/simulate-incident", {
+/** The real claims process: submits a transaction hash for the adjuster to independently verify
+ * against Arc — never trusts the caller's word for what happened. Returns the finished claim
+ * (approved-and-paid, or denied-with-reasoning) — a denial is a normal 201 response, not an
+ * HTTP error, since the adjuster did its job correctly either way. */
+export function submitClaim(policyId: string, txHash: string) {
+  return request<{ claim: Claim }>("/api/claims", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ policyId, txHash }),
   });
+}
+
+export function getClaim(id: string) {
+  return request<{ claim: Claim }>(`/api/claims/${id}`);
+}
+
+export function getClaimsForPolicy(policyId: string) {
+  return request<{ claims: Claim[] }>(`/api/policy/${policyId}/claims`);
 }

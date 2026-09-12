@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Ripcord — Parametric wallet insurance",
   description:
-    "Add a wallet, get a live risk score, get a quote, get covered. Automatic USDC payout the moment a drain is detected — no claims form, no vote.",
+    "Add a wallet, get a live risk score, get a quote, get covered. Submit a transaction ID and an automated adjuster pays out in seconds — no human review, no vote.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

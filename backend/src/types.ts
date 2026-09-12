@@ -63,11 +63,39 @@ export interface Policy {
   claimTriggerAddress: Address | null; // the flagged destination that triggered the payout
 }
 
-export interface Incident {
+/**
+ * pending  — submitted, adjuster hasn't finished review
+ * approved — adjuster verified it's a covered drain; about to attempt payout
+ * denied   — adjuster rejected it; `reasoning` explains why, nothing gets paid
+ * paying   — payout transaction submitted, awaiting confirmation
+ * paid     — payout confirmed on-chain — terminal success
+ * failed   — was approved, but the on-chain payout itself failed (e.g. the claims agent ran out
+ *            of gas — a real failure mode this caught live) — terminal, but distinguishable from
+ *            "denied" since the claim itself was valid, only the execution failed
+ */
+export type ClaimStatus = "pending" | "approved" | "denied" | "paying" | "paid" | "failed";
+
+export interface ClaimCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface Claim {
+  id: string;
   policyId: string;
-  triggerAddress: Address; // the flagged/anomalous destination
-  fromAddress: Address; // the insured address that sent funds
-  txHash: string;
-  matchedReason: string;
-  detectedAt: string;
+  submittedTxHash: string;
+  status: ClaimStatus;
+  fromAddress: Address | null;
+  triggerAddress: Address | null;
+  tokenAddress: Address | null;
+  amount: string | null;
+  verdict: "approved" | "denied" | null;
+  reasoning: string | null;
+  checks: ClaimCheck[] | null;
+  payoutTxHash: string | null;
+  failureReason: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  paidAt: string | null;
 }

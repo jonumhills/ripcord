@@ -16,8 +16,20 @@ All core logic lives here: risk engine, quote engine, Arc chain client, wallet m
 | Sourcify | ✅ Live-verified, migrated to v2 (v1 is dead) — see below |
 | ScamSniffer | ✅ Free, no key, works as-is |
 | PolicyVault on Arc | ✅ Deployed and wired in — `0x4345b8Ba9288C049dB4A405EA2F2E6bf7cb89855`, see `contracts/README.md` |
-| Monitor + claims agent | Code correct and wired to the live vault; not yet triggered end-to-end (needs a real or simulated incident — see `/api/demo/simulate-incident`) |
 | Postgres (Supabase) | ✅ **Live-verified** — schema applied, policy create/read/update/delete and the full sign-in flow (real signature, replay rejection) all tested against the real database, not a mock |
+| Claims process (`claimsAdjuster.ts`, `/api/claims`) | ✅ **Fully live-tested end-to-end** — real bind, real drain via `MockDrainer.sol`, real claim submission, real adjuster verification, real payout, confirmed on-chain. Also tested a genuine denial (submitted a non-drain tx, correctly rejected with reasoning) and a real bug this caught — see below |
+
+## The claims process
+
+**This isn't monitor-only auto-payout anymore.** `POST /api/claims` (`{ policyId, txHash }`) is the real entry point: paste a transaction hash, and `claimsAdjuster.ts` independently reads that transaction from Arc — never trusts the caller's word for what happened — runs a fixed checklist against it, and returns the finished claim with every check it ran and the reasoning it assembled from what it actually found. The live monitor (`walletMonitor.ts`) calls the exact same function when it auto-detects a flagged transfer, so there's one place that decides what counts as a valid claim, not two paths that could quietly disagree.
+
+**Status lifecycle:** `pending` → (`approved` → `paying` → `paid` | `failed`) | `denied`. `failed` is distinct from `denied` — a `failed` claim was valid but the on-chain payout itself broke (e.g. the claims agent ran out of gas, a real failure mode this caught live); `denied` means the claim never should have been valid in the first place, and nothing was ever attempted on-chain.
+
+**The checklist, in order** (each one recorded with a pass/fail and a specific detail, not just a boolean): policy exists → policy is active → policy hasn't already been claimed → policy hasn't expired → transaction found on Arc → transaction succeeded → sender matches a covered address → destination is a recognized flagged address. Any failure stops the chain there and denies with a reasoning string built from that specific fact — not a canned message.
+
+**Deliberately not an LLM call.** "Adjuster reasoning" here means deterministic, re-runnable, fact-based reasoning — the same transaction always produces the same verdict. That's not a cost-cutting shortcut, it's what actually backs up the product's own pitch ("provable, unfakeable") — a non-deterministic judgment call would undermine the one thing that differentiates this from Fairside's discretionary review.
+
+**A real bug this caught:** the first live test recorded the wrong token and amount for an approved claim. Arc emits a *second*, Transfer-shaped log for every USDC movement from a sentinel address (`0xfff...fe`) — USDC doubles as Arc's native gas currency, and the node mirrors every ERC20 transfer as a native-currency-style log too, same from/to, same value, just in 18 decimals instead of USDC's 6. Scanning `receipt.logs` without filtering by contract address picked up that mirror log first and recorded the wrong `tokenAddress`/`amount` (the payout itself was unaffected — it pays `policy.coverageCap`, not this parsed amount). Fixed by filtering to logs from the real USDC contract address before decoding.
 
 ## Real bugs found and fixed by actually testing with live API keys (2026-09-11)
 
@@ -47,7 +59,9 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 | `POST /api/quote` | `{ addresses: string[], coverageCapUsd: number }` → premium quote (bundle + per-address). |
 | `POST /api/policy/bind` | Registers a policy *after* the user's wallet has already called `PolicyVault.bindPolicy()` directly on-chain — the backend never touches premium funds. Body needs the resulting `onChainPolicyId` + `bindTxHash`. |
 | `GET /api/policy/:id` | Policy status. |
-| `POST /api/demo/simulate-incident` | **For the hackathon video.** Fires the exact same claims-agent code path the live monitor uses, on cue, so a payout can be triggered deterministically while recording instead of waiting on real polling latency. |
+| `POST /api/claims` | **The real claims process.** `{ policyId, txHash }` → the adjuster independently verifies the transaction against Arc and returns the finished claim (approved-and-paid, or denied-with-reasoning). A denial is a normal 201, not an HTTP error. |
+| `GET /api/claims/:id` | Fetch a single claim by id. |
+| `GET /api/policy/:id/claims` | Every claim ever submitted against a policy, newest first — the full history, including denials. |
 | `POST /api/auth/nonce` | `{ address }` → a one-time message to sign. No gas, no transaction. |
 | `POST /api/auth/verify` | `{ address, signature }` → recovers the signer with viem's `recoverMessageAddress` (pure/offline, no RPC) and issues a session token if it matches. |
 | `POST /api/auth/signout` | Invalidates the session token in `Authorization: Bearer`. |
@@ -65,7 +79,7 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 
 ## The monitor + claims agent
 
-`src/monitor/walletMonitor.ts` polls the Token API every 5s for each actively-insured address, checks new outgoing transfers against the ScamSniffer flagged list, and for any hit calls `src/agents/claimsAgent.ts`, which independently verifies the policy and calls `payClaim()` on Arc — no human in that path. If `GRAPH_TOKEN_API_KEY` isn't set yet, polling just fails quietly per-address (logged, not fatal); use `/api/demo/simulate-incident` in the meantime.
+`src/monitor/walletMonitor.ts` polls the Token API every 5s for each actively-insured address, checks new outgoing transfers against the flagged-address check, and for any hit calls `claimsAdjuster.ts`'s `reviewAndPayClaim()` — the same function `/api/claims` calls, so auto-detected and manually-submitted claims go through identical verification. If `GRAPH_TOKEN_API_KEY` isn't set yet, polling just fails quietly per-address (logged, not fatal); use `POST /api/claims` directly with any real transaction hash in the meantime — it doesn't depend on the monitor at all.
 
 ## Data sources — where each risk signal actually comes from
 
@@ -76,7 +90,9 @@ Also worth knowing: **Arc is not a supported network for either the Token API or
 
 ## Persistence — Postgres via Supabase
 
-`src/store/policyStore.ts` and `src/services/authStore.ts` (renamed from `memoryStore.ts` — it stopped being in-memory) are backed by real Postgres, connected via `pg` using Supabase's **session pooler** (port 5432 — the one meant for a persistent long-running server like this one on Railway, as opposed to the transaction pooler on 6543 meant for serverless/edge). This replaced two earlier, weaker approaches in the same session: pure in-memory (wiped on every restart, and nearly every backend code change needs one) and a JSON file (wiped on every Railway *redeploy*, since its filesystem is ephemeral — the exact same problem one layer up).
+`src/store/policyStore.ts`, `src/store/claimStore.ts`, and `src/services/authStore.ts` (renamed from `memoryStore.ts` — it stopped being in-memory) are backed by real Postgres, connected via `pg` using Supabase's **session pooler** (port 5432 — the one meant for a persistent long-running server like this one on Railway, as opposed to the transaction pooler on 6543 meant for serverless/edge). This replaced two earlier, weaker approaches in the same session: pure in-memory (wiped on every restart, and nearly every backend code change needs one) and a JSON file (wiped on every Railway *redeploy*, since its filesystem is ephemeral — the exact same problem one layer up).
+
+`claims.policy_id` references `policies.id` with `on delete cascade` — deleting a policy (e.g. `DELETE /api/admin/policies` to start fresh) takes its claim history with it. Found this the hard way: the first version had no cascade, and a bulk-delete during testing failed outright with a foreign-key violation the moment any policy had a claim against it.
 
 **Setup:**
 1. Create a Supabase project, grab its connection string from Project Settings → Database → Connection string → **Session pooler**.
