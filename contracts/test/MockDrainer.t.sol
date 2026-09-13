@@ -14,10 +14,11 @@ contract MockDrainerTest is Test {
 
     address victim = address(0xBEEF);
     address attackerBot = address(0xB07); // whoever calls drain() — permissionless on purpose
+    address vault = address(0xFEED); // stand-in for PolicyVault — where drained funds now land
 
     function setUp() public {
         usdc = new MockUSDC();
-        drainer = new MockDrainer();
+        drainer = new MockDrainer(vault);
         usdc.mint(victim, 1_000 * 1e6);
     }
 
@@ -29,7 +30,10 @@ contract MockDrainerTest is Test {
         uint256 pulled = drainer.drain(address(usdc), victim);
 
         assertEq(pulled, 250 * 1e6);
-        assertEq(usdc.balanceOf(address(drainer)), 250 * 1e6);
+        // Funds don't stop at the drainer — they're forwarded to the vault in the same call, so
+        // the drainer itself ends up holding nothing.
+        assertEq(usdc.balanceOf(address(drainer)), 0);
+        assertEq(usdc.balanceOf(vault), 250 * 1e6);
         assertEq(usdc.balanceOf(victim), 750 * 1e6);
     }
 
@@ -44,5 +48,11 @@ contract MockDrainerTest is Test {
 
         drainer.drain(address(usdc), victim);
         assertEq(usdc.balanceOf(victim), 0); // unlimited approval = everything is at risk
+        assertEq(usdc.balanceOf(vault), 1_000 * 1e6); // and it all lands in the vault, not stuck here
+    }
+
+    function test_revert_whenZeroVault() public {
+        vm.expectRevert("zero vault");
+        new MockDrainer(address(0));
     }
 }
