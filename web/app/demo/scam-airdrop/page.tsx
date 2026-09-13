@@ -7,7 +7,12 @@ import { getPolicy, submitClaim } from "@/lib/api";
 import type { Policy, Claim } from "@/lib/types";
 
 const EXPLORER_TX_BASE = "https://testnet.arcscan.app/tx/";
-const DRAIN_AMOUNT_USD = 2; // modest, real, on-chain — leaves plenty of headroom for the rest of the demo
+// Was a fixed $2 — real, on-chain, but silently too small once a policy's coverage cap exceeded
+// whatever premiums + forwarded drains had accumulated in PolicyVault. payClaim() then reverts
+// with "transfer amount exceeds balance," which looks like a bug but is the vault correctly
+// refusing to overpay. Now editable so it can match whatever policy you're actually demoing:
+// drain at least that policy's coverage cap and the payout always has enough to draw from.
+const DEFAULT_DRAIN_AMOUNT_USD = 160;
 
 type Stage = "idle" | "connecting" | "approving" | "draining" | "drained" | "reviewing" | "reviewed";
 
@@ -31,6 +36,7 @@ export default function ScamAirdropDemoPage() {
   const [policyIdInput, setPolicyIdInput] = useState("");
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [claim, setClaim] = useState<Claim | null>(null);
+  const [drainAmount, setDrainAmount] = useState(DEFAULT_DRAIN_AMOUNT_USD);
   const [seconds, setSeconds] = useState(212); // pure flavor — a static countdown sells the urgency lure
 
   useEffect(() => {
@@ -47,7 +53,7 @@ export default function ScamAirdropDemoPage() {
       await ensureArcChain();
 
       setStage("approving");
-      await approveScamAirdrop(addr, usdcToUnits(DRAIN_AMOUNT_USD));
+      await approveScamAirdrop(addr, usdcToUnits(drainAmount));
 
       setStage("draining");
       const hash = await triggerDrain(addr, addr);
@@ -98,10 +104,13 @@ export default function ScamAirdropDemoPage() {
           position: "fixed",
           top: 12,
           right: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
           background: "#000a",
           border: "1px solid #ffffff33",
           borderRadius: 999,
-          padding: "6px 14px",
+          padding: "6px 8px 6px 14px",
           fontSize: 11,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
@@ -109,6 +118,29 @@ export default function ScamAirdropDemoPage() {
         }}
       >
         Staged demo — not a real airdrop
+        {stage === "idle" && (
+          <label
+            title="Match this to the coverage cap of the policy you'll file a claim against, or the payout will fail for lack of funds in the vault"
+            style={{ display: "flex", alignItems: "center", gap: 5, textTransform: "none", letterSpacing: "normal" }}
+          >
+            <span style={{ opacity: 0.7 }}>Drain $</span>
+            <input
+              type="number"
+              min={1}
+              value={drainAmount}
+              onChange={(e) => setDrainAmount(Math.max(1, Number(e.target.value) || 0))}
+              style={{
+                width: 56,
+                padding: "3px 6px",
+                borderRadius: 6,
+                border: "1px solid #ffffff33",
+                background: "#ffffff11",
+                color: "#fff",
+                fontSize: 12,
+              }}
+            />
+          </label>
+        )}
       </div>
 
       <div style={{ maxWidth: 480, width: "100%", marginTop: 48, textAlign: "center" }}>
@@ -168,7 +200,7 @@ export default function ScamAirdropDemoPage() {
                 <p style={{ opacity: 0.8, marginTop: 10, lineHeight: 1.6, fontSize: 14 }}>
                   That "claim" button approved a spending cap, and this page pulled it the instant
                   you signed — exactly how a real wallet-drainer phishing site works. This was
-                  ${DRAIN_AMOUNT_USD} in testnet USDC, on Arc, for real.
+                  ${drainAmount} in testnet USDC, on Arc, for real.
                 </p>
 
                 <div style={{ height: 1, background: "#ffffff22", margin: "20px 0" }} />
