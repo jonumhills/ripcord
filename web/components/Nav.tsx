@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/useAuth";
+import { BrandMark } from "@/components/BrandMark";
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   const pathname = usePathname();
@@ -29,7 +30,8 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur">
       <div className="wrap flex items-center justify-between py-4">
-        <Link href="/" className="font-display font-semibold text-lg text-fg tracking-[-0.01em]">
+        <Link href="/" className="flex items-center gap-2 font-display font-semibold text-lg text-fg tracking-[-0.01em]">
+          <BrandMark className="h-5 w-5 text-primary shrink-0" />
           Ripcord
         </Link>
 

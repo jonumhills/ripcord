@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Nav } from "@/components/Nav";
 import { PolicyCard } from "@/components/app/PolicyCard";
 import { ClaimCard } from "@/components/app/ClaimCard";
+import { FileClaimCard } from "@/components/app/FileClaimCard";
 import { useAuth } from "@/lib/useAuth";
 import { getMyPolicies } from "@/lib/auth";
 import type { Policy } from "@/lib/types";
@@ -16,6 +17,13 @@ export default function DashboardPage() {
   const [policies, setPolicies] = useState<Policy[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("policies");
+
+  function refresh() {
+    if (!session) return;
+    getMyPolicies(session)
+      .then((res) => setPolicies(res.policies))
+      .catch((err) => setLoadError(err instanceof Error ? err.message : String(err)));
+  }
 
   useEffect(() => {
     if (!session) return;
@@ -115,21 +123,22 @@ export default function DashboardPage() {
             )}
 
             {tab === "claims" && (
-              claims.length > 0 ? (
-                <div className="grid sm:grid-cols-2 gap-5 fade-in-up">
-                  {claims.map((p) => (
-                    <ClaimCard key={p.id} policy={p} />
-                  ))}
+              <div className="flex flex-col gap-8 fade-in-up">
+                <div className="max-w-lg">
+                  <FileClaimCard policies={unclaimedPolicies} onPaid={refresh} />
                 </div>
-              ) : (
-                <div className="card flex flex-col items-start gap-2 max-w-md">
-                  <span className="label-caps">No claims yet</span>
-                  <p className="text-muted text-sm leading-relaxed">
-                    Good news — none of your covered wallets have been drained. A claim pays out
-                    automatically the moment one is, no form to file.
-                  </p>
-                </div>
-              )
+
+                {claims.length > 0 && (
+                  <div className="flex flex-col gap-4">
+                    <span className="label-caps">Paid claims</span>
+                    <div className="grid sm:grid-cols-2 gap-5">
+                      {claims.map((p) => (
+                        <ClaimCard key={p.id} policy={p} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
